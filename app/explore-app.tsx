@@ -88,7 +88,7 @@ function MomentCard({
       <Link className="card-link" href={`/views/${view.slug}`} aria-label={`Open ${view.title}`} />
       <div className="moment-person">
         <span style={{ backgroundImage: `url('${person.avatar}')` }} />
-        <p><strong>{person.name}</strong><small>shared this view</small></p>
+        <strong>{person.name}</strong>
       </div>
       <button className={`moment-save ${saved ? 'saved' : ''}`} type="button" onClick={onSave} aria-label={`${saved ? 'Remove' : 'Save'} ${view.title}`}>
         <Heart size={19} fill={saved ? 'currentColor' : 'none'} />
@@ -96,9 +96,7 @@ function MomentCard({
       <div className="moment-copy">
         <h2>{view.title}</h2>
         <p><MapPin size={12} /> {view.region}, {view.country}</p>
-        <span><Clock3 size={12} /> {view.bestTime}</span>
       </div>
-      <Link className="moment-open" href={`/views/${view.slug}`} aria-label={`See where to stand at ${view.title}`}><ArrowUpRight size={17} /></Link>
     </article>
   );
 }
