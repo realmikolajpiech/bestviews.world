@@ -17,6 +17,7 @@ import {
   Globe2,
   Heart,
   LocateFixed,
+  LayoutGrid,
   Map as MapIcon,
   MapPin,
   Mountain,
@@ -131,7 +132,6 @@ function ExploreSurface({
     <section className="discover content-surface">
       <div className="section-heading">
         <div>
-          <p>Handpicked around the world</p>
           <h1>Find a view worth the journey.</h1>
         </div>
         <div className="story-tabs" role="tablist" aria-label="Explore filters">
@@ -164,7 +164,7 @@ function ExploreSurface({
 
       <section className="rank-preview">
         <div className="rank-title">
-          <div><span>Community ranking</span><h2>Worth a special trip</h2></div>
+          <div><h2>Worth a special trip</h2></div>
           <button type="button">How ranking works <ArrowUpRight size={14} /></button>
         </div>
         <div className="rank-strip">
@@ -189,7 +189,6 @@ function MapSurface({ saved, toggleSaved }: { saved: Set<string>; toggleSaved: (
     <section className="map-surface content-surface" id="map">
       <div className="map-list">
         <div className="map-list-head">
-          <span>Best around</span>
           <h1>Italy & the Alps</h1>
           <p>128 exact viewpoints in this area</p>
         </div>
@@ -255,7 +254,6 @@ function RankingsSurface() {
     <section className="ranking-surface content-surface">
       <div className="ranking-hero">
         <div>
-          <span className="eyebrow"><Trophy size={12} /> Community ranking · Updated weekly</span>
           <h1>The world&apos;s most<br />extraordinary views.</h1>
           <p>Ranked by people who have actually stood there, with pairwise comparisons that make every vote count.</p>
         </div>
@@ -291,7 +289,7 @@ function SavedSurface({ saved, toggleSaved }: { saved: Set<string>; toggleSaved:
   return (
     <section className="saved-surface content-surface">
       <div className="saved-head">
-        <div><span>My map</span><h1>Places I want to remember.</h1><p>Your future journeys, collected in one calm corner.</p></div>
+        <div><h1>Places I want to remember.</h1><p>Your future journeys, collected in one calm corner.</p></div>
         <div className="passport"><Globe2 size={25} /><span><strong>7</strong><small>countries explored</small></span><span><strong>23</strong><small>views experienced</small></span></div>
       </div>
       {savedViews.length ? (
@@ -337,7 +335,6 @@ function SubmitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => 
       <section className="submit-dialog" role="dialog" aria-modal="true" aria-label="Add a viewpoint" onMouseDown={(event) => event.stopPropagation()}>
         <button className="dialog-close" type="button" onClick={onClose}><X size={18} /></button>
         <span className="dialog-icon"><MapPin size={20} /></span>
-        <span className="eyebrow">Community contribution</span>
         <h2>Know an extraordinary view?</h2>
         <p>Tell us exactly where to stand. Every submission is checked by the community before it goes live.</p>
         <label>Viewpoint name<input placeholder="e.g. Sant'Elia hill overlook" /></label>
@@ -385,11 +382,14 @@ export default function ExploreApp({ userName }: { userName: string | null }) {
     <main className="explore-shell">
       <header className="topbar">
         <Brand />
+        <div className="view-switcher" role="tablist" aria-label="Choose discovery view">
+          <button className={surface === 'explore' ? 'active' : ''} type="button" onClick={() => navigate('explore')}><LayoutGrid size={14} /> Discover</button>
+          <button className={surface === 'map' ? 'active' : ''} type="button" onClick={() => navigate('map')}><MapIcon size={14} /> Map</button>
+        </div>
         <button className="search" type="button" aria-label="Search destinations" onClick={() => setSearchOpen(true)}>
           <Search size={17} /><span>Search any city, region or view</span><kbd>⌘ K</kbd>
         </button>
         <nav className="header-actions" aria-label="Primary navigation">
-          <button className={surface === 'map' ? 'active' : ''} type="button" onClick={() => navigate(surface === 'map' ? 'explore' : 'map')}><MapIcon size={16} /> {surface === 'map' ? 'Feed' : 'Map'}</button>
           <button className="near-me" type="button" onClick={() => { navigate('map'); showToast('Showing remarkable views near you'); }}><Navigation size={15} /> Near me</button>
           <button className="avatar" type="button" aria-label="Open profile">{userName?.charAt(0).toUpperCase() || 'M'}</button>
         </nav>
