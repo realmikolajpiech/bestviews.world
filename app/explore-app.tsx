@@ -48,7 +48,7 @@ const categoryIcons = {
 function Brand() {
   return (
     <Link className="brand" href="/" aria-label="BestViews.world home">
-      <span className="brand-mark" aria-hidden="true"><i /><b /></span>
+      <img className="brand-mark" src="/bestviews-logo.png" alt="" aria-hidden="true" />
       <span>BestViews<span>.world</span></span>
     </Link>
   );
