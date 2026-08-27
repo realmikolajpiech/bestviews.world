@@ -22,7 +22,7 @@ a { text-decoration: none; }
 .view-switcher button.active { background: white; color: var(--ink); box-shadow: 0 2px 9px rgba(23,32,26,.08); }
 .brand { display: flex; align-items: center; gap: 11px; width: max-content; font-size: 19px; font-weight: 710; letter-spacing: -.7px; }
 .brand > span span { color: #818781; font-weight: 520; }
-.brand-mark { width: 31px; height: 31px; border-radius: 50%; display: block; flex: none; object-fit: cover; }
+.brand-mark { width: 31px; height: 31px; background: var(--ink); border-radius: 50%; display: grid; place-items: center; position: relative; overflow: hidden; transform: rotate(-5deg); }
 .brand-mark i { position: absolute; width: 23px; height: 10px; border-radius: 70% 30% 0 0; background: var(--lime); bottom: 4px; left: 2px; transform: rotate(-13deg); }
 .brand-mark b { position: absolute; width: 15px; height: 9px; border-radius: 80% 40% 0 0; background: #f7f7f1; bottom: 4px; right: -2px; transform: rotate(18deg); }
 .search { width: 100%; height: 44px; border: 1px solid rgba(23, 32, 26, .12); background: white; border-radius: 13px; display: flex; align-items: center; gap: 12px; padding: 0 10px 0 15px; color: #747a75; text-align: left; box-shadow: 0 3px 16px rgba(31, 42, 35, .045); }
