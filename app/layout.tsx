@@ -15,18 +15,18 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://bestviews.world'),
-  title: 'BestViews.world — See the world through someone else’s eyes',
+  title: 'BestViews.world — Find the best views anywhere',
   description:
     'Discover views shared by people, save the places that move you, and share exactly where you stood.',
   openGraph: {
-    title: 'BestViews.world — See the world through someone else’s eyes',
-    description: 'Discover views shared by people, save what moves you, and share where you stood.',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'BestViews.world — See the world through someone else’s eyes' }],
+    title: 'BestViews.world — Find the best views anywhere',
+    description: 'The world’s most memorable views, shared by people who stood there.',
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'BestViews.world — Find the best views anywhere' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BestViews.world — See the world through someone else’s eyes',
-    description: 'Discover views shared by people, save what moves you, and share where you stood.',
+    title: 'BestViews.world — Find the best views anywhere',
+    description: 'The world’s most memorable views, shared by people who stood there.',
     images: ['/og.png'],
   },
 };

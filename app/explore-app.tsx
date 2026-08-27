@@ -16,7 +16,6 @@ import {
   Globe2,
   Heart,
   LocateFixed,
-  LayoutGrid,
   Map as MapIcon,
   MapPin,
   Mountain,
@@ -130,8 +129,8 @@ function ExploreSurface({
     <section className="personal-discover content-surface">
       <header className="personal-heading">
         <div>
-          <h1>See the world through<br />someone else&apos;s eyes.</h1>
-          <p>Save what moves you. Share where you stood.</p>
+          <h1>Find the best<br />views anywhere.</h1>
+          <p>Shared by people who stood there.</p>
         </div>
         <div className="people-to-follow">
           {contributors.slice(0, 5).map((person, index) => (
@@ -179,6 +178,16 @@ function ExploreSurface({
 
 function MapSurface({ saved, toggleSaved }: { saved: Set<string>; toggleSaved: (slug: string) => void }) {
   const [selected, setSelected] = useState(viewpoints[1]);
+  const locateNearest = () => {
+    navigator.geolocation?.getCurrentPosition(({ coords }) => {
+      const nearest = viewpoints.reduce((closest, view) => {
+        const distance = ((view.latitude - coords.latitude) ** 2) + ((view.longitude - coords.longitude) ** 2);
+        const closestDistance = ((closest.latitude - coords.latitude) ** 2) + ((closest.longitude - coords.longitude) ** 2);
+        return distance < closestDistance ? view : closest;
+      });
+      setSelected(nearest);
+    });
+  };
   return (
     <section className="map-surface content-surface" id="map">
       <div className="map-list">
@@ -209,7 +218,10 @@ function MapSurface({ saved, toggleSaved }: { saved: Set<string>; toggleSaved: (
 
       <div className="visual-map">
         <ExploreMap viewpoints={viewpoints} selected={selected} onSelect={setSelected} ariaLabel="Interactive map of remarkable viewpoints" />
-        <div className="map-mode-pill"><MapIcon size={14} /> Photo map <span>On</span></div>
+        <div className="map-top-actions">
+          <button className="map-near-me" type="button" onClick={locateNearest}><Navigation size={14} /> Near me</button>
+          <div className="map-mode-pill"><MapIcon size={14} /> Photo map <span>On</span></div>
+        </div>
         <article className="map-popover">
           <span className="popover-image" style={{ backgroundImage: `url('${selected.image}')` }}>
             <button type="button" onClick={() => toggleSaved(selected.slug)} aria-label={`Save ${selected.title}`}><Heart size={17} fill={saved.has(selected.slug) ? 'currentColor' : 'none'} /></button>
@@ -460,15 +472,13 @@ export default function ExploreApp({ userName }: { userName: string | null }) {
     <main className="explore-shell">
       <header className="topbar">
         <Brand />
-        <div className="view-switcher" role="tablist" aria-label="Choose discovery view">
-          <button className={surface === 'explore' ? 'active' : ''} type="button" onClick={() => navigate('explore')}><LayoutGrid size={14} /> Discover</button>
-          <button className={surface === 'map' ? 'active' : ''} type="button" onClick={() => navigate('map')}><MapIcon size={14} /> Map</button>
+        <div className="topbar-center">
+          <button className="search" type="button" aria-label="Search destinations" onClick={() => setSearchOpen(true)}>
+            <Search size={17} /><span>Search places and views</span><kbd>⌘ K</kbd>
+          </button>
         </div>
-        <button className="search" type="button" aria-label="Search destinations" onClick={() => setSearchOpen(true)}>
-          <Search size={17} /><span>Search any city, region or view</span><kbd>⌘ K</kbd>
-        </button>
         <nav className="header-actions" aria-label="Primary navigation">
-          <button className="near-me" type="button" onClick={() => { navigate('map'); showToast('Showing remarkable views near you'); }}><Navigation size={15} /> Near me</button>
+          <button className="share-view-top" type="button" onClick={() => setSubmitOpen(true)}><Plus size={15} /><span>Share a view</span></button>
           <button className="avatar" type="button" aria-label="Open profile">{userName?.charAt(0).toUpperCase() || 'M'}</button>
         </nav>
       </header>
