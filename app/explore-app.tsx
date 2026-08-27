@@ -190,23 +190,16 @@ function MapSurface({ saved, toggleSaved }: { saved: Set<string>; toggleSaved: (
     <section className="map-surface content-surface" id="map">
       <div className="map-list">
         <div className="map-list-head">
-          <span>Explore the world</span>
-          <h1>Remarkable viewpoints</h1>
-          <p>{viewpoints.length} community-selected places with exact coordinates</p>
-        </div>
-        <div className="map-filter-row">
-          <button type="button"><SlidersHorizontal size={14} /> Filters</button>
-          <button type="button">Open now</button>
-          <button type="button">Free</button>
+          <h1>Views around here</h1>
         </div>
         <div className="map-results">
           {viewpoints.map((view) => (
             <button className={`map-result ${selected.slug === view.slug ? 'active' : ''}`} type="button" key={view.slug} onClick={() => setSelected(view)}>
               <span className="result-image" style={{ backgroundImage: `url('${view.thumb}')` }} />
               <span className="result-copy">
-                <span><strong>{view.shortTitle}</strong><Rating value={view.rating} /></span>
+                <strong>{view.shortTitle}</strong>
                 <small>{view.region}, {view.country}</small>
-                <em><Clock3 size={11} /> {view.bestTime} · {view.walk}</em>
+                <em><Footprints size={12} /> {view.walk}</em>
               </span>
               <Heart size={17} fill={saved.has(view.slug) ? 'currentColor' : 'none'} onClick={(event) => { event.stopPropagation(); toggleSaved(view.slug); }} />
             </button>
@@ -218,18 +211,16 @@ function MapSurface({ saved, toggleSaved }: { saved: Set<string>; toggleSaved: (
         <ExploreMap viewpoints={viewpoints} selected={selected} onSelect={setSelected} ariaLabel="Interactive map of remarkable viewpoints" />
         <div className="map-top-actions">
           <button className="map-near-me" type="button" onClick={locateNearest}><Navigation size={14} /> Near me</button>
-          <div className="map-mode-pill"><MapIcon size={14} /> Photo map <span>On</span></div>
         </div>
         <article className="map-popover">
           <span className="popover-image" style={{ backgroundImage: `url('${selected.image}')` }}>
             <button type="button" onClick={() => toggleSaved(selected.slug)} aria-label={`Save ${selected.title}`}><Heart size={17} fill={saved.has(selected.slug) ? 'currentColor' : 'none'} /></button>
           </span>
           <div>
-            <span><Rating value={selected.rating} /> #{selected.rank} in the world</span>
             <h2>{selected.title}</h2>
             <p>{selected.region}, {selected.country}</p>
-            <small><Footprints size={12} /> {selected.walk}<b>·</b><Clock3 size={12} /> Best {selected.bestTime}</small>
-            <Link href={`/views/${selected.slug}`}>View exact spot <ArrowUpRight size={14} /></Link>
+            <small><Footprints size={13} /> {selected.walk}</small>
+            <Link href={`/views/${selected.slug}`}>Open view <ArrowUpRight size={14} /></Link>
           </div>
         </article>
       </div>

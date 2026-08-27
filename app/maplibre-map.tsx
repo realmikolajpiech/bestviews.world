@@ -63,9 +63,6 @@ export function ExploreMap({
         button.className = `photo-marker${viewpoint.slug === selected.slug ? ' active' : ''}`;
         button.style.backgroundImage = `url('${viewpoint.thumb}')`;
         button.setAttribute('aria-label', `Show ${viewpoint.title}`);
-        const rating = document.createElement('span');
-        rating.textContent = viewpoint.rating.toFixed(1);
-        button.append(rating);
         button.addEventListener('click', () => onSelectRef.current(viewpoint));
         shell.append(button);
 
