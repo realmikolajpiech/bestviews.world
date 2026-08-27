@@ -17,6 +17,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ViewpointMap } from '../../maplibre-map';
 import type { Viewpoint } from '../../view-data';
 
 function Mark() {
@@ -75,11 +76,14 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
 
           <section className="stand-panel">
             <div className="stand-panel-head"><h2>Stand here</h2><span><Check size={11} /> Verified</span></div>
-            <a className="stand-mini-map" href={directions} target="_blank" rel="noreferrer">
-              <span className="panel-pin"><MapPin size={18} fill="currentColor" /></span>
+            <div className="stand-mini-map">
+              <ViewpointMap
+                coordinate={{ latitude: view.latitude, longitude: view.longitude }}
+                ariaLabel={`Interactive map showing the exact viewpoint for ${view.title}`}
+              />
               <span className="panel-look"><i /><b>LOOK</b></span>
               <small>{view.coordinates}</small>
-            </a>
+            </div>
             <div className="stand-instruction"><Compass size={16} /><span><small>Face this way</small><strong>{view.lookDirection}</strong></span></div>
           </section>
 

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 
 const geistSans = Geist({
@@ -14,18 +15,18 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://bestviews.world'),
-  title: 'BestViews.world — Find a view worth the journey',
+  title: 'BestViews.world — See the world through someone else’s eyes',
   description:
-    'Discover exact viewpoints, know when to go, and keep a personal map of the most remarkable views in the world.',
+    'Discover views shared by people, save the places that move you, and share exactly where you stood.',
   openGraph: {
-    title: 'BestViews.world — Find a view worth the journey',
-    description: 'Discover exact viewpoints, know when to go, and map the remarkable views you experience.',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'BestViews.world — Find a view worth the journey' }],
+    title: 'BestViews.world — See the world through someone else’s eyes',
+    description: 'Discover views shared by people, save what moves you, and share where you stood.',
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'BestViews.world — See the world through someone else’s eyes' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BestViews.world — Find a view worth the journey',
-    description: 'Discover exact viewpoints, know when to go, and map the remarkable views you experience.',
+    title: 'BestViews.world — See the world through someone else’s eyes',
+    description: 'Discover views shared by people, save what moves you, and share where you stood.',
     images: ['/og.png'],
   },
 };

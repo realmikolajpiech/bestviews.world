@@ -15,6 +15,8 @@ export type Viewpoint = {
   walk: string;
   lookDirection: string;
   coordinates: string;
+  latitude: number;
+  longitude: number;
   altitude: string;
   detour: number;
   image: string;
@@ -41,6 +43,8 @@ export const viewpoints: Viewpoint[] = [
     walk: '22 min walk',
     lookDirection: 'Face east toward the Odle peaks',
     coordinates: '46.6005° N, 11.7248° E',
+    latitude: 46.6005,
+    longitude: 11.7248,
     altitude: '2,519 m',
     detour: 94,
     image: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=2200&q=92',
@@ -65,6 +69,8 @@ export const viewpoints: Viewpoint[] = [
     walk: '14 min walk',
     lookDirection: 'Look southwest over the harbour',
     coordinates: '44.1353° N, 9.6822° E',
+    latitude: 44.1353,
+    longitude: 9.6822,
     altitude: '92 m',
     detour: 91,
     image: 'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=2200&q=92',
@@ -89,6 +95,8 @@ export const viewpoints: Viewpoint[] = [
     walk: '2 min from lift',
     lookDirection: 'Face south toward Midtown',
     coordinates: '40.7593° N, 73.9794° W',
+    latitude: 40.7593,
+    longitude: -73.9794,
     altitude: '260 m',
     detour: 89,
     image: 'https://images.unsplash.com/photo-1444723121867-7a241cacace9?auto=format&fit=crop&w=2200&q=92',
@@ -113,6 +121,8 @@ export const viewpoints: Viewpoint[] = [
     walk: '8 min walk',
     lookDirection: 'Look east above the cloud layer',
     coordinates: '32.7351° N, 16.9289° W',
+    latitude: 32.7351,
+    longitude: -16.9289,
     altitude: '1,818 m',
     detour: 93,
     image: 'https://images.unsplash.com/photo-1483347756197-71ef80e95f73?auto=format&fit=crop&w=2200&q=92',
@@ -137,6 +147,8 @@ export const viewpoints: Viewpoint[] = [
     walk: '10 min walk',
     lookDirection: 'Face southwest across the lake',
     coordinates: '51.3276° N, 116.1818° W',
+    latitude: 51.3276,
+    longitude: -116.1818,
     altitude: '1,885 m',
     detour: 92,
     image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2200&q=92',
@@ -161,6 +173,8 @@ export const viewpoints: Viewpoint[] = [
     walk: '5–6 hr return',
     lookDirection: 'Look northwest along Lysefjord',
     coordinates: '59.0337° N, 6.5930° E',
+    latitude: 59.0337,
+    longitude: 6.593,
     altitude: '1,084 m',
     detour: 90,
     image: 'https://images.unsplash.com/photo-1520769945061-0a448c463865?auto=format&fit=crop&w=2200&q=92',

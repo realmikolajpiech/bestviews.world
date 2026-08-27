@@ -305,7 +305,7 @@ a { text-decoration: none; }
 .section-label > button { border: 1px solid #dfe3dc; border-radius: 9px; background: white; padding: 8px 10px; display: flex; align-items: center; gap: 5px; font-size: 8px; font-weight: 700; }
 .section-label > small { color: #858b86; font-size: 8px; }
 .stand-card { min-height: 340px; display: grid; grid-template-columns: 1.14fr .86fr; overflow: hidden; border-radius: 22px; background: #17201a; color: white; }
-.stand-map { position: relative; min-height: 340px; overflow: hidden; background-color: #dce2d9; background-image: url('https://a.basemaps.cartocdn.com/light_all/12/2157/1498@2x.png'); background-size: cover; background-position: center; filter: saturate(.52); }
+.stand-map { position: relative; min-height: 340px; overflow: hidden; background-color: #dce2d9; }
 .stand-map:after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 53% 50%, transparent 0 18%, rgba(31,49,36,.08) 45%, rgba(23,32,26,.23)); }
 .exact-pin { position: absolute; z-index: 3; left: 52%; top: 48%; width: 43px; height: 43px; transform: translate(-50%,-50%); border-radius: 50% 50% 50% 7px; rotate: -45deg; background: var(--ink); color: var(--lime); border: 3px solid white; display: grid; place-items: center; box-shadow: 0 8px 25px rgba(0,0,0,.24); }
 .exact-pin svg { rotate: 45deg; }
@@ -544,7 +544,7 @@ a { text-decoration: none; }
 .simple-section-title h2 { margin: 0; font-size: 29px; font-weight: 650; letter-spacing: -1.1px; }
 .simple-section-title button { border: 1px solid #dde1da; border-radius: 9px; background: white; padding: 8px 10px; display: flex; align-items: center; gap: 5px; color: #697069; font-size: 8px; }
 .simple-spot-card { min-height: 370px; display: grid; grid-template-columns: 1.22fr .78fr; border-radius: 22px; overflow: hidden; background: var(--ink); color: white; }
-.simple-map { min-height: 370px; position: relative; overflow: hidden; background-color: #dce2d9; background-image: url('https://a.basemaps.cartocdn.com/light_all/12/2157/1498@2x.png'); background-size: cover; background-position: center; filter: saturate(.5); }
+.simple-map { min-height: 370px; position: relative; overflow: hidden; background-color: #dce2d9; }
 .simple-map:after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 53% 50%,transparent 0 20%,rgba(34,52,39,.1) 50%,rgba(23,32,26,.22)); }
 .simple-pin { position: absolute; z-index: 3; left: 52%; top: 49%; width: 45px; height: 45px; transform: translate(-50%,-50%) rotate(-45deg); border-radius: 50% 50% 50% 8px; background: var(--ink); color: var(--lime); border: 3px solid white; display: grid; place-items: center; box-shadow: 0 9px 26px rgba(0,0,0,.28); }
 .simple-pin svg { transform: rotate(45deg); }
@@ -695,4 +695,79 @@ a { text-decoration: none; }
   .stand-mini-map { height: 175px; }
   .view-facts > div { min-height: 72px; flex-direction: column; align-items: flex-start; }
   .one-tip { min-height: 82px; }
+}
+
+/* Personal discovery feed */
+.personal-discover { min-height: calc(100vh - 78px); margin-left: 92px; padding: clamp(34px,4vw,60px) clamp(24px,3.4vw,54px) 45px; }
+.personal-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
+.personal-heading h1 { margin: 0; max-width: 760px; font-size: clamp(39px,4.3vw,66px); line-height: .97; font-weight: 650; letter-spacing: -3.4px; }
+.personal-heading h1 br { display: none; }
+.personal-heading > div:first-child > p { margin: 13px 0 0; color: #717972; font-size: 13px; }
+.people-to-follow { display: flex; align-items: flex-start; gap: 13px; }
+.people-to-follow button { position: relative; width: 52px; padding: 0; border: 0; background: transparent; display: grid; justify-items: center; gap: 6px; }
+.people-to-follow button > span { width: 48px; height: 48px; border-radius: 50%; background-size: cover; background-position: center; box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px #d8ddd5; }
+.people-to-follow button small { color: #697169; font-size: 9px; }
+.people-to-follow button i { position: absolute; z-index: 2; right: 2px; top: 33px; width: 11px; height: 11px; border: 2px solid var(--paper); border-radius: 50%; background: #8da600; }
+.people-to-follow .find-people > svg { width: 48px; height: 48px; padding: 14px; border: 1px dashed #cbd1c8; border-radius: 50%; color: #657065; }
+.personal-toolbar { min-height: 72px; margin-top: 26px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 1px solid #e0e3dd; }
+.feed-switch { padding: 4px; border-radius: 11px; background: #e9ece6; display: flex; gap: 2px; }
+.feed-switch button { height: 33px; padding: 0 13px; border: 0; border-radius: 8px; background: transparent; color: #777e78; font-size: 11px; font-weight: 680; }
+.feed-switch button.active { background: white; color: var(--ink); box-shadow: 0 2px 8px rgba(23,32,26,.07); }
+.mood-tabs { display: flex; align-items: center; gap: 6px; overflow-x: auto; }
+.mood-tabs button { height: 35px; padding: 0 11px; border: 1px solid #dfe3dc; border-radius: 999px; background: transparent; color: #717872; display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 10px; font-weight: 650; }
+.mood-tabs button.active { background: var(--ink); border-color: var(--ink); color: white; }
+.moment-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 13px; }
+.moment-card { position: relative; isolation: isolate; min-height: clamp(390px,49vh,530px); overflow: hidden; border-radius: 22px; background-size: cover; background-position: center; color: white; box-shadow: inset 0 0 0 1px rgba(255,255,255,.13); }
+.moment-card:after { content: ''; position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg,rgba(7,13,9,.06) 25%,rgba(7,13,9,.72) 100%); }
+.moment-person { position: absolute; z-index: 3; top: 15px; left: 15px; padding: 5px 9px 5px 5px; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; background: rgba(15,23,17,.27); display: flex; align-items: center; gap: 7px; backdrop-filter: blur(10px); }
+.moment-person > span { width: 29px; height: 29px; border: 1px solid rgba(255,255,255,.7); border-radius: 50%; background-size: cover; background-position: center; }
+.moment-person p { margin: 0; display: grid; line-height: 1.05; }
+.moment-person strong { font-size: 9px; }
+.moment-person small { margin-top: 3px; color: rgba(255,255,255,.7); font-size: 7px; }
+.moment-save { position: absolute; z-index: 3; top: 15px; right: 15px; width: 41px; height: 41px; border: 1px solid rgba(255,255,255,.38); border-radius: 50%; background: rgba(15,23,17,.27); color: white; display: grid; place-items: center; backdrop-filter: blur(10px); }
+.moment-save.saved { background: var(--lime); border-color: var(--lime); color: var(--ink); }
+.moment-copy { position: absolute; z-index: 2; left: 20px; right: 64px; bottom: 19px; pointer-events: none; }
+.moment-copy h2 { margin: 0 0 6px; font-size: clamp(23px,2vw,31px); line-height: 1; font-weight: 650; letter-spacing: -1.2px; }
+.moment-copy p { margin: 0; color: rgba(255,255,255,.78); display: flex; align-items: center; gap: 5px; font-size: 10px; }
+.moment-copy > span { margin-top: 13px; color: rgba(255,255,255,.68); display: flex; align-items: center; gap: 5px; font-size: 9px; }
+.moment-open { position: absolute; z-index: 3; right: 17px; bottom: 17px; width: 40px; height: 40px; border-radius: 50%; background: rgba(249,250,246,.94); color: var(--ink); display: grid; place-items: center; backdrop-filter: blur(9px); }
+.share-invitation { min-height: 78px; margin-top: 14px; padding: 13px 16px; border: 1px solid #dfe3dc; border-radius: 17px; background: #ecefe7; display: flex; align-items: center; }
+.share-avatars { display: flex; margin-right: 13px; }
+.share-avatars span { width: 34px; height: 34px; margin-left: -8px; border: 2px solid #ecefe7; border-radius: 50%; background-size: cover; background-position: center; }
+.share-avatars span:first-child { margin-left: 0; }
+.share-invitation p { margin: 0; display: grid; gap: 3px; }
+.share-invitation strong { font-size: 11px; }
+.share-invitation p span { color: #747c75; font-size: 9px; }
+.share-invitation button { height: 38px; margin-left: auto; padding: 0 12px; border: 0; border-radius: 10px; background: var(--ink); color: white; display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .moment-card { transition: transform .35s cubic-bezier(.2,.8,.2,1), filter .35s ease; }
+  .moment-card:hover { transform: translateY(-3px); filter: saturate(1.05); }
+  .moment-open, .moment-save { transition: transform .2s ease; }
+  .moment-card:hover .moment-open { transform: rotate(5deg) scale(1.05); }
+}
+
+@media (max-width: 1120px) {
+  .personal-heading { align-items: flex-start; }
+  .people-to-follow button:nth-child(n+5) { display: none; }
+  .personal-toolbar { align-items: flex-start; flex-direction: column; padding: 14px 0; }
+  .mood-tabs { width: 100%; }
+  .moment-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 720px) {
+  .personal-discover { min-height: calc(100vh - 69px); margin-left: 0; padding: 26px 14px 100px; }
+  .personal-heading { display: block; }
+  .personal-heading h1 { font-size: 39px; letter-spacing: -2.3px; }
+  .personal-heading h1 br { display: initial; }
+  .personal-heading > div:first-child > p { font-size: 11px; }
+  .people-to-follow { margin-top: 24px; gap: 10px; overflow-x: auto; padding: 2px 2px 4px; }
+  .people-to-follow button { flex: 0 0 49px; }
+  .people-to-follow button > span, .people-to-follow .find-people > svg { width: 44px; height: 44px; }
+  .personal-toolbar { margin-top: 19px; }
+  .moment-grid { grid-template-columns: 1fr; }
+  .moment-card { min-height: 470px; }
+  .moment-copy h2 { font-size: 29px; }
+  .share-invitation { align-items: flex-start; flex-wrap: wrap; }
+  .share-invitation button { width: 100%; margin: 12px 0 0; justify-content: center; }
 }
