@@ -11,6 +11,12 @@ export async function POST(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const action = String(body.action || '');
   const db = getDb();
+  if (!db) {
+    return Response.json(
+      { error: 'Database is not configured yet' },
+      { status: 503 },
+    );
+  }
   const now = Date.now();
 
   if (action === 'save' || action === 'visit') {

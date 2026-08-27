@@ -1,26 +1,26 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { bigint, boolean, index, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
 
-export const userViewStates = sqliteTable('user_view_states', {
+export const userViewStates = pgTable('user_view_states', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   viewSlug: text('view_slug').notNull(),
-  saved: integer('saved', { mode: 'boolean' }).notNull().default(false),
-  visited: integer('visited', { mode: 'boolean' }).notNull().default(false),
-  updatedAt: integer('updated_at').notNull(),
+  saved: boolean('saved').notNull().default(false),
+  visited: boolean('visited').notNull().default(false),
+  updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
 }, (table) => [
   uniqueIndex('idx_user_view_state_unique').on(table.userId, table.viewSlug),
   index('idx_user_view_state_user').on(table.userId),
 ]);
 
-export const communityTips = sqliteTable('community_tips', {
+export const communityTips = pgTable('community_tips', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   viewSlug: text('view_slug').notNull(),
   body: text('body').notNull(),
-  createdAt: integer('created_at').notNull(),
+  createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 }, (table) => [index('idx_tips_view_created').on(table.viewSlug, table.createdAt)]);
 
-export const viewpointSubmissions = sqliteTable('viewpoint_submissions', {
+export const viewpointSubmissions = pgTable('viewpoint_submissions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   title: text('title').notNull(),
@@ -28,7 +28,7 @@ export const viewpointSubmissions = sqliteTable('viewpoint_submissions', {
   lookDirection: text('look_direction'),
   photoKey: text('photo_key'),
   status: text('status').notNull().default('pending'),
-  createdAt: integer('created_at').notNull(),
+  createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 }, (table) => [
   index('idx_submissions_user_created').on(table.userId, table.createdAt),
   index('idx_submissions_status_created').on(table.status, table.createdAt),

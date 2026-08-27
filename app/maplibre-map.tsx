@@ -46,7 +46,6 @@ export function ExploreMap({
         center: [10, 39],
         zoom: 2.2,
         minZoom: 1.5,
-        attributionControl: true,
       });
       mapRef.current = map;
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
@@ -117,7 +116,6 @@ export function ViewpointMap({
         style: MAP_STYLE,
         center: [coordinate.longitude, coordinate.latitude],
         zoom: 13.5,
-        attributionControl: true,
       });
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
       const element = document.createElement('div');

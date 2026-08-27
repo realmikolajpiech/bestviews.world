@@ -338,8 +338,8 @@ function SubmitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => 
 
   const handlePhoto = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Photo must be under 10 MB.');
+    if (file.size > 4 * 1024 * 1024) {
+      setError('Photo must be under 4 MB.');
       return;
     }
     setPhoto(file);
@@ -409,7 +409,7 @@ function SubmitDialog({ onClose, onDone }: { onClose: () => void; onDone: () => 
         <label>Viewpoint name<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Sant'Elia hill overlook" /></label>
         <label>Exact location<div className="location-input"><MapPin size={16} /><input value={coordinateText} onChange={(event) => { const value = event.target.value; setCoordinateText(value); setCoordinate(parseCoordinates(value)); }} onBlur={() => { const parsed = parseCoordinates(coordinateText); if (parsed) updateCoordinate(parsed); }} placeholder="Latitude, longitude" inputMode="decimal" /><button type="button" onClick={() => setPickerOpen((open) => !open)}>{pickerOpen ? 'Hide map' : 'Drop a pin'}</button></div></label>
         {pickerOpen && <LocationPickerMap coordinate={coordinate} onChange={updateCoordinate} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />}
-        <label htmlFor="viewpoint-photo">Your photo<div className={`upload-field ${photo ? 'has-photo' : ''}`}><Upload size={20} /><span><strong>{photo?.name || 'Choose a recent photo'}</strong><small>{photo ? photoMessage : 'JPG, PNG or WebP, up to 10 MB'}</small></span></div></label>
+        <label htmlFor="viewpoint-photo">Your photo<div className={`upload-field ${photo ? 'has-photo' : ''}`}><Upload size={20} /><span><strong>{photo?.name || 'Choose a recent photo'}</strong><small>{photo ? photoMessage : 'JPG, PNG or WebP, up to 4 MB'}</small></span></div></label>
         <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void handlePhoto(event.target.files?.[0])} />
         {gpsCandidate && (
           <div className="gps-found"><span><LocateFixed size={16} /><b>Photo location available</b><small>{formatCoordinates(gpsCandidate)}</small></span><button type="button" onClick={() => { updateCoordinate(gpsCandidate); setPickerOpen(true); setGpsCandidate(null); setPhotoMessage('Photo GPS applied — confirm the pin before submitting'); }}>Use location</button></div>
