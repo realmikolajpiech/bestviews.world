@@ -11,7 +11,6 @@ import {
   Clock3,
   Compass,
   Eye,
-  Footprints,
   Gem,
   Globe2,
   Heart,
@@ -199,7 +198,6 @@ function MapSurface({ saved, toggleSaved }: { saved: Set<string>; toggleSaved: (
               <span className="result-copy">
                 <strong>{view.shortTitle}</strong>
                 <small>{view.region}, {view.country}</small>
-                <em><Footprints size={12} /> {view.walk}</em>
               </span>
               <Heart size={17} fill={saved.has(view.slug) ? 'currentColor' : 'none'} onClick={(event) => { event.stopPropagation(); toggleSaved(view.slug); }} />
             </button>
@@ -219,7 +217,6 @@ function MapSurface({ saved, toggleSaved }: { saved: Set<string>; toggleSaved: (
           <div>
             <h2>{selected.title}</h2>
             <p>{selected.region}, {selected.country}</p>
-            <small><Footprints size={13} /> {selected.walk}</small>
             <Link href={`/views/${selected.slug}`}>Open view <ArrowUpRight size={14} /></Link>
           </div>
         </article>
