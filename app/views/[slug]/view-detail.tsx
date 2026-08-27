@@ -21,7 +21,7 @@ import { ViewpointMap } from '../../maplibre-map';
 import type { Viewpoint } from '../../view-data';
 
 function Mark() {
-  return <span className="brand-mark" aria-hidden="true"><i /><b /></span>;
+  return <img className="brand-mark" src="/bestviews-logo.png" alt="" aria-hidden="true" />;
 }
 
 export default function ViewDetail({ view }: { view: Viewpoint }) {
