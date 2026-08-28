@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   ArrowLeft,
   Bookmark,
@@ -17,8 +18,12 @@ import {
   Sun,
 } from 'lucide-react';
 import { useState } from 'react';
-import { ViewpointMap } from '../../maplibre-map';
 import type { Viewpoint } from '../../view-data';
+
+const ViewpointMap = dynamic(
+  () => import('../../maplibre-map').then((module) => module.ViewpointMap),
+  { ssr: false },
+);
 
 function Mark() {
   return <img className="brand-mark" src="/bestviews-logo.png" alt="" aria-hidden="true" />;

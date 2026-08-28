@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   ArrowUpRight,
   Bookmark,
@@ -31,8 +32,17 @@ import {
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { ExploreMap, LocationPickerMap, type Coordinates } from './maplibre-map';
+import type { Coordinates } from './maplibre-map';
 import { categories, viewpoints, type Viewpoint } from './view-data';
+
+const ExploreMap = dynamic(
+  () => import('./maplibre-map').then((module) => module.ExploreMap),
+  { ssr: false },
+);
+const LocationPickerMap = dynamic(
+  () => import('./maplibre-map').then((module) => module.LocationPickerMap),
+  { ssr: false },
+);
 
 type Surface = 'explore' | 'map' | 'saved';
 

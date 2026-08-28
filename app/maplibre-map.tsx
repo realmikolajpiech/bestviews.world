@@ -161,7 +161,6 @@ export function LocationPickerMap({
         style: MAP_STYLE,
         center: [initial.longitude, initial.latitude],
         zoom: coordinate ? 13 : 3.3,
-        attributionControl: true,
       });
       mapRef.current = map;
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
