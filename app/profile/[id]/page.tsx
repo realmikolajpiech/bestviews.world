@@ -89,7 +89,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
           </div>
           <div className="profile-intro">
             <div className="profile-name-line"><h1>{profile.display_name}</h1></div>
-            <p className={profile.bio ? 'profile-bio' : 'profile-bio profile-bio-empty'}>{profile.bio || `${firstName} shares places worth remembering.`}</p>
+            {profile.bio && <p className="profile-bio">{profile.bio}</p>}
             <div className="profile-meta">
               {profile.location && <span><MapPin size={14} /> {profile.location}</span>}
               {profile.social_url && <a href={profile.social_url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> {socialLabel}</a>}

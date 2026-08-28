@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { ArrowLeft, Camera, Check, ExternalLink, Heart, LoaderCircle, MapPin, Pencil, Plus, UserRound, X } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ExternalLink, Heart, LoaderCircle, MapPin, Pencil, Plus, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import AuthDialog from '../auth-dialog';
 import { getSupabaseBrowserClient } from '../supabase';
@@ -243,15 +243,41 @@ export default function ProfilePage() {
         </section>
       ) : (
         <div className="profile-content">
-          <section className="profile-hero">
-            <div className={`profile-avatar ${avatar ? 'has-image' : ''}`} style={avatar ? { backgroundImage: `url('${avatar}')` } : undefined}>{!avatar && displayName.charAt(0).toUpperCase()}</div>
+          <section className={`profile-hero ${editing ? 'is-editing' : ''}`}>
+            {editing ? (
+              <label className="profile-inline-avatar" aria-label="Change profile picture">
+                <span className={`profile-avatar ${avatarPreview || avatar ? 'has-image' : ''}`} style={avatarPreview || avatar ? { backgroundImage: `url('${avatarPreview || avatar}')` } : undefined}>
+                  {!avatarPreview && !avatar && displayName.charAt(0).toUpperCase()}
+                  <i><Camera size={16} /></i>
+                </span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setAvatarFile(event.target.files?.[0] || null); setProfileError(null); }} />
+              </label>
+            ) : (
+              <div className={`profile-avatar ${avatar ? 'has-image' : ''}`} style={avatar ? { backgroundImage: `url('${avatar}')` } : undefined}>{!avatar && displayName.charAt(0).toUpperCase()}</div>
+            )}
             <div className="profile-intro">
-              <div className="profile-name-line"><h1>{displayName}</h1></div>
-              <p className={profile?.bio ? 'profile-bio' : 'profile-bio profile-bio-empty'}>{profile?.bio || 'Share a little about yourself and the views you chase.'}</p>
-              <div className="profile-meta">
-                {profile?.location && <span><MapPin size={14} /> {profile.location}</span>}
-                {profile?.social_url && <a href={profile.social_url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> {profileLinkLabel(profile.social_url)}</a>}
-              </div>
+              {editing ? (
+                <div className="profile-inline-fields">
+                  <input className="profile-inline-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={80} autoFocus aria-label="Display name" />
+                  <textarea className="profile-inline-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={240} rows={2} placeholder="Share a little about yourself and the views you chase." aria-label="Bio" />
+                  <div className="profile-inline-meta">
+                    <label><MapPin size={14} /><input value={location} onChange={(event) => setLocation(event.target.value)} maxLength={100} placeholder="Add location" aria-label="Location" /></label>
+                    <label><ExternalLink size={14} /><input value={socialUrl} onChange={(event) => setSocialUrl(event.target.value)} maxLength={500} placeholder="Add social or website link" aria-label="Social or website link" /></label>
+                  </div>
+                  {profileError && <p className="profile-inline-error" role="alert">{profileError}</p>}
+                </div>
+              ) : (
+                <>
+                  <div className="profile-name-line"><h1>{displayName}</h1></div>
+                  {profile?.bio
+                    ? <p className="profile-bio">{profile.bio}</p>
+                    : <button className="profile-add-bio" type="button" onClick={() => { resetEditor(); setEditing(true); }}>+ Add a bio</button>}
+                  <div className="profile-meta">
+                    {profile?.location && <span><MapPin size={14} /> {profile.location}</span>}
+                    {profile?.social_url && <a href={profile.social_url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> {profileLinkLabel(profile.social_url)}</a>}
+                  </div>
+                </>
+              )}
               <div className="profile-social-stats">
                 <span><strong>{stats.followers}</strong><small>{stats.followers === 1 ? 'Follower' : 'Followers'}</small></span>
                 <span><strong>{stats.following}</strong><small>Following</small></span>
@@ -259,41 +285,19 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="profile-owner-actions">
-              <button className="profile-edit-profile" type="button" onClick={() => { resetEditor(); setEditing(true); }}><Pencil size={15} /> Edit profile</button>
-              <button className="profile-signout" type="button" onClick={() => void signOut()}>Sign out</button>
+              {editing ? (
+                <>
+                  <button className="profile-save-profile" type="button" onClick={() => void saveProfile()} disabled={savingProfile}>{savingProfile ? 'Saving…' : 'Save'}</button>
+                  <button className="profile-cancel-edit" type="button" onClick={() => { resetEditor(); setEditing(false); }}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  <button className="profile-edit-profile" type="button" onClick={() => { resetEditor(); setEditing(true); }}><Pencil size={15} /> Edit profile</button>
+                  <button className="profile-signout" type="button" onClick={() => void signOut()}>Sign out</button>
+                </>
+              )}
             </div>
           </section>
-
-          {editing && (
-            <section className="profile-editor" aria-label="Edit profile">
-              <div className="profile-editor-head">
-                <div><h2>Complete your profile</h2><p>Help people recognize the person behind the places.</p></div>
-                <button type="button" onClick={() => { resetEditor(); setEditing(false); }} aria-label="Close profile editor"><X size={18} /></button>
-              </div>
-              <form onSubmit={(event) => { event.preventDefault(); void saveProfile(); }}>
-                <label className="profile-avatar-picker">
-                  <span className={`profile-avatar ${avatarPreview || avatar ? 'has-image' : ''}`} style={avatarPreview || avatar ? { backgroundImage: `url('${avatarPreview || avatar}')` } : undefined}>
-                    {!avatarPreview && !avatar && displayName.charAt(0).toUpperCase()}
-                    <i><Camera size={16} /></i>
-                  </span>
-                  <b>Profile picture</b>
-                  <small>JPG, PNG, or WebP · up to 4 MB</small>
-                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setAvatarFile(event.target.files?.[0] || null); setProfileError(null); }} />
-                </label>
-                <div className="profile-editor-fields">
-                  <label><span>Name</span><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} autoFocus /></label>
-                  <label><span>Location</span><input value={location} onChange={(event) => setLocation(event.target.value)} maxLength={100} placeholder="Kraków, Poland" /></label>
-                  <label className="profile-editor-wide"><span>Bio</span><textarea value={bio} onChange={(event) => setBio(event.target.value)} maxLength={240} placeholder="Tell people what kinds of places you chase…" /><small>{bio.length}/240</small></label>
-                  <label className="profile-editor-wide"><span>Social or website link</span><input value={socialUrl} onChange={(event) => setSocialUrl(event.target.value)} maxLength={500} placeholder="instagram.com/yourname" /></label>
-                </div>
-                {profileError && <p className="profile-editor-error" role="alert">{profileError}</p>}
-                <div className="profile-editor-actions">
-                  <button type="button" onClick={() => { resetEditor(); setEditing(false); }}>Cancel</button>
-                  <button type="submit" disabled={savingProfile}>{savingProfile ? 'Saving…' : 'Save profile'}</button>
-                </div>
-              </form>
-            </section>
-          )}
 
           <nav className="profile-tabs" aria-label="Your views">
             <button className={tab === 'visited' ? 'active' : ''} type="button" onClick={() => setTab('visited')}><Check size={16} /> Been there</button>
