@@ -2,10 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
-import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import type { Viewpoint } from './view-data';
 
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+const MAPLIBRE_WORKER_URL = '/maplibre/maplibre-gl-worker.mjs';
 
 export type Coordinates = { latitude: number; longitude: number };
 
@@ -38,7 +38,7 @@ export function ExploreMap({
 
     void import('maplibre-gl').then(({ LngLatBounds, Map, Marker, NavigationControl, GeolocateControl, setWorkerUrl }) => {
       if (disposed || !containerRef.current) return;
-      setWorkerUrl(mapLibreWorkerUrl);
+      setWorkerUrl(MAPLIBRE_WORKER_URL);
 
       const map = new Map({
         container: containerRef.current,
@@ -110,7 +110,7 @@ export function ViewpointMap({
 
     void import('maplibre-gl').then(({ Map, Marker, NavigationControl, setWorkerUrl }) => {
       if (disposed || !containerRef.current) return;
-      setWorkerUrl(mapLibreWorkerUrl);
+      setWorkerUrl(MAPLIBRE_WORKER_URL);
       map = new Map({
         container: containerRef.current,
         style: MAP_STYLE,
@@ -154,7 +154,7 @@ export function LocationPickerMap({
 
     void import('maplibre-gl').then(({ Map, Marker, NavigationControl, setWorkerUrl }) => {
       if (disposed || !containerRef.current) return;
-      setWorkerUrl(mapLibreWorkerUrl);
+      setWorkerUrl(MAPLIBRE_WORKER_URL);
       const initial = coordinate ?? { latitude: 44.5, longitude: 10.5 };
       const map = new Map({
         container: containerRef.current,
