@@ -13,12 +13,13 @@ const ViewpointMap = dynamic(() => import('../../maplibre-map').then((module) =>
 
 type Tip = { id: string; body: string; status: string; author: string };
 
-function capturedAtLabel(localDateTime: string) {
+function capturedAtLabel(localDateTime: string, timezoneOffset: string | null) {
   const [date, time] = localDateTime.split('T');
   const [year, month, day] = date.split('-').map(Number);
   const [hour, minute] = time.split(':').map(Number);
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-    .format(new Date(year, month - 1, day, hour, minute));
+  const label = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(year, month - 1, day, hour, minute)));
+  return timezoneOffset ? `${label} · UTC${timezoneOffset}` : label;
 }
 
 function mapTips(data: Record<string, unknown>[] | null): Tip[] {
@@ -124,7 +125,7 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
           </section>
 
           <section className="view-facts">
-            {view.capturedAtLocal && <div><CalendarDays /><span><small>Photo captured</small><strong>{capturedAtLabel(view.capturedAtLocal)}</strong></span></div>}
+            {view.capturedAtLocal && <div><CalendarDays /><span><small>Photo captured</small><strong>{capturedAtLabel(view.capturedAtLocal, view.captureTimezoneOffset)}</strong></span></div>}
             {view.bestTime && <div><Clock3 /><span><small>Best time</small><strong>{view.bestTime}</strong></span></div>}
             {view.accessSummary && <div><Footprints /><span><small>From where</small><strong>{view.accessSummary}</strong></span></div>}
             {view.difficulty && <div><Compass /><span><small>Effort</small><strong>{view.difficulty}</strong></span></div>}

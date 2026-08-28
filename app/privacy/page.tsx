@@ -41,7 +41,7 @@ export default function PrivacyPage() {
           <h3>Things you choose to add</h3>
           <p>This includes viewpoints and their exact coordinates, photos, captions, practical tips, saved and visited places, collections, follows, and other community activity.</p>
           <h3>Location</h3>
-          <p>If you choose Near Me, your browser provides your current location so the app can find nearby viewpoints. BestViews.world does not store this live location. When you choose a photo to share, the app may read GPS coordinates and the original capture time embedded in that file on your device. These suggest a map pin and describe when the view was photographed. Before upload, the visible image is re-created on your device without embedded metadata such as GPS, capture time, or device details. The processed photo and extracted details are uploaded only when you deliberately submit the viewpoint.</p>
+          <p>If you choose Near Me, your browser provides your current location so the app can find nearby viewpoints. BestViews.world does not store this live location. When you choose a photo to share, the app may read GPS coordinates and the original capture time embedded in that file on your device. These suggest a map pin and describe when the view was photographed. If GPS is found, the coordinate is sent to OpenStreetMap’s Nominatim service to suggest the nearby region and country. Before upload, the visible image is re-created on your device without embedded metadata such as GPS, capture time, or device details. The processed photo and extracted details are stored by BestViews.world only when you deliberately submit the viewpoint.</p>
           <h3>Service and security information</h3>
           <p>Our hosting and authentication providers may process technical information such as IP address, browser and device details, request logs, cookies, and session identifiers to operate and secure the service.</p>
         </section>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2>How information is shared</h2>
-          <p>We use service providers to run BestViews.world, including Supabase for authentication, database, and file storage, and Google when you use its sign-in option. They process information under their own terms and privacy commitments. We may also disclose information when required by law, to protect people or the service, or as part of a business transfer with appropriate safeguards. We do not sell personal information.</p>
+          <p>We use service providers to run BestViews.world, including Supabase for authentication, database, and file storage; Google when you use its sign-in option; and OpenStreetMap’s Nominatim service for nearby place lookup during viewpoint submission. They process information under their own terms and privacy commitments. We may also disclose information when required by law, to protect people or the service, or as part of a business transfer with appropriate safeguards. We do not sell personal information.</p>
         </section>
 
         <section>

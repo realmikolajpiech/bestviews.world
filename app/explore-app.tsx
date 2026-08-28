@@ -39,6 +39,7 @@ const LocationPickerMap = dynamic(() => import('./maplibre-map').then((module) =
 
 type Surface = 'explore' | 'map' | 'saved';
 type PhotoLocationState = 'idle' | 'scanning' | 'found' | 'missing' | 'unreadable';
+type PlaceLookupState = 'idle' | 'loading' | 'found' | 'failed';
 
 function useAnimatedModalClose(onClose: () => void) {
   const [closing, setClosing] = useState(false);
@@ -263,8 +264,8 @@ function formatCaptureTime(localDateTime: string, timezoneOffset: string | null)
   const [date, time] = localDateTime.split('T');
   const [year, month, day] = date.split('-').map(Number);
   const [hour, minute] = time.split(':').map(Number);
-  const label = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-    .format(new Date(year, month - 1, day, hour, minute));
+  const label = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(year, month - 1, day, hour, minute)));
   return timezoneOffset ? `${label} (UTC${timezoneOffset})` : `${label} (camera time)`;
 }
 function photoContentType(file: File) {
@@ -303,6 +304,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
   const [detectedPhotoCoordinate, setDetectedPhotoCoordinate] = useState<Coordinates | null>(null);
   const [capturedAtLocal, setCapturedAtLocal] = useState<string | null>(null);
   const [captureTimezoneOffset, setCaptureTimezoneOffset] = useState<string | null>(null);
+  const [placeLookupState, setPlaceLookupState] = useState<PlaceLookupState>('idle');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoLocationState, setPhotoLocationState] = useState<PhotoLocationState>('idle');
   const [submitting, setSubmitting] = useState(false);
@@ -333,6 +335,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     setDetectedPhotoCoordinate(null);
     setCapturedAtLocal(null);
     setCaptureTimezoneOffset(null);
+    setPlaceLookupState('idle');
     setError(null);
     setPhotoLocationState('scanning');
 
@@ -349,6 +352,20 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
       setDetectedPhotoCoordinate(result.coordinates);
       updateCoordinate(result.coordinates, 'photo');
       setPhotoLocationState('found');
+      setPlaceLookupState('loading');
+      try {
+        const params = new URLSearchParams({ lat: String(result.coordinates.latitude), lon: String(result.coordinates.longitude) });
+        const response = await fetch(`/api/reverse-geocode?${params}`);
+        const place = await response.json() as { region?: string; country?: string };
+        if (readId !== photoReadId.current) return;
+        if (response.ok && place.region && place.country) {
+          setRegion((current) => current.trim() || place.region || '');
+          setCountry((current) => current.trim() || place.country || '');
+          setPlaceLookupState('found');
+        } else setPlaceLookupState('failed');
+      } catch {
+        if (readId === photoReadId.current) setPlaceLookupState('failed');
+      }
     } else {
       setPhotoLocationState(result.kind);
     }
@@ -425,9 +442,10 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
           <p>{coordinateSource === 'photo' ? 'We placed the pin from the photo. Check that it is the exact viewpoint.' : 'Tap the map as precisely as you can.'}</p>
           <LocationPickerMap coordinate={coordinate} onChange={(next) => updateCoordinate(next, 'manual')} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
           <div className="share-place-fields">
-            <label>City or region<input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="South Tyrol" autoFocus /></label>
+            <label>City or region<input value={region} onChange={(event) => setRegion(event.target.value)} placeholder={placeLookupState === 'loading' ? 'Finding nearby place…' : 'South Tyrol'} autoFocus={coordinateSource !== 'photo'} /></label>
             <label>Country<input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="Italy" /></label>
           </div>
+          {placeLookupState !== 'idle' && <small className={`place-lookup-note ${placeLookupState}`} role="status">{placeLookupState === 'loading' && 'Finding the nearby place for you…'}{placeLookupState === 'found' && <>Place filled automatically · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></>}{placeLookupState === 'failed' && 'We could not fill the place automatically — just type it above.'}</small>}
           <div className="share-coordinates"><MapPin size={15} /><input aria-label="Viewpoint latitude and longitude" value={coordinateText} onChange={(event) => { const value = event.target.value; const parsed = parseCoordinates(value); setCoordinateText(value); setCoordinate(parsed); setCoordinateSource(parsed ? 'manual' : null); }} placeholder="Or paste latitude, longitude" inputMode="decimal" /></div>
         </div>}
 
@@ -439,17 +457,20 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
             const Icon = categoryIcons[item];
             return <button className={category === item ? 'active' : ''} type="button" key={item} onClick={() => setCategory(item as ViewCategory)}><Icon size={15} /> {item}</button>;
           })}</div></fieldset>
-          <div className="share-optional-fields">
-            <label>Getting there <span>optional</span><input value={access} onChange={(event) => setAccess(event.target.value)} placeholder="Short walk from the cable car" /></label>
-            <label>Best moment <span>optional</span><input value={bestTime} onChange={(event) => setBestTime(event.target.value)} placeholder="Early morning" /></label>
-          </div>
+          <details className="share-optional-disclosure">
+            <summary>Add helpful details <span>optional</span></summary>
+            <div className="share-optional-fields">
+              <label>Getting there<input value={access} onChange={(event) => setAccess(event.target.value)} placeholder="Short walk from the cable car" /></label>
+              <label>Best moment<input value={bestTime} onChange={(event) => setBestTime(event.target.value)} placeholder="Early morning" /></label>
+            </div>
+          </details>
         </div>}
 
         <div className="share-flow-footer">
           <span>{error && <small className="submit-error" role="alert">{error}</small>}</span>
           <div>{step > 1 && <button className="share-back" type="button" onClick={() => { setError(null); setStep((step - 1) as 1 | 2); }}>Back</button>}
             {step < 3
-              ? <button className="share-next" type="button" onClick={continueFlow} disabled={step === 1 && photoLocationState === 'scanning'}>{photoLocationState === 'scanning' ? 'Checking photo…' : 'Continue'} <ChevronRight size={16} /></button>
+              ? <button className="share-next" type="button" onClick={continueFlow} disabled={(step === 1 && photoLocationState === 'scanning') || (step === 2 && placeLookupState === 'loading' && (!region || !country))}>{step === 1 && photoLocationState === 'scanning' ? 'Checking photo…' : step === 2 && placeLookupState === 'loading' && (!region || !country) ? 'Finding place…' : step === 1 && photoLocationState === 'found' ? 'Review location' : 'Continue'} <ChevronRight size={16} /></button>
               : <button className="share-next" type="button" onClick={() => void submit()} disabled={submitting}>{submitting ? 'Sharing…' : 'Share this view'} <ChevronRight size={16} /></button>}
           </div>
         </div>
