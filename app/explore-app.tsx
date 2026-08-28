@@ -28,8 +28,8 @@ import {
   Waves,
   X,
 } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
 import { useEffect, useMemo, useState } from 'react';
+import AuthDialog from './auth-dialog';
 import { getSupabaseBrowserClient } from './supabase';
 import type { Coordinates } from './maplibre-map';
 import { categories, type ViewCategory, type Viewpoint } from './view-data';
@@ -248,32 +248,6 @@ function SearchDialog({ viewpoints, onClose }: { viewpoints: Viewpoint[]; onClos
           </div>
           {!results.length && <p className="search-empty">No shared views match that place yet.</p>}
         </div>
-      </section>
-    </div>
-  );
-}
-
-function AuthDialog({ onClose }: { onClose: () => void }) {
-  const [error, setError] = useState<string | null>(null);
-  const { closing, requestClose } = useAnimatedModalClose(onClose);
-  const continueWithGoogle = async () => {
-    setError(null);
-    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
-    if (authError) setError(authError.message);
-  };
-  return (
-    <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
-      <section className="auth-dialog" role="dialog" aria-modal="true" aria-label="Sign in" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
-        <img src="/bestviews-logo.png" alt="" />
-        <h2>Keep your views with you.</h2>
-        <p>Save places, remember where you have been, and share your own viewpoints.</p>
-        <div className="oauth-actions">
-          <button type="button" onClick={() => void continueWithGoogle()}>
-            <span className="oauth-button-content"><FcGoogle size={21} aria-hidden="true" /><span>Continue with Google</span></span>
-          </button>
-        </div>
-        {error && <p className="submit-error">{error}</p>}
       </section>
     </div>
   );

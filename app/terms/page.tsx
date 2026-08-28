@@ -37,7 +37,7 @@ export default function TermsPage() {
 
         <section>
           <h2>Your account</h2>
-          <p>You may sign in through a supported third-party provider. Keep access to that account secure and provide accurate information. You are responsible for activity performed through your BestViews.world account. Contact <a href="mailto:support@mikolajpiech.com">support@mikolajpiech.com</a> if you believe your account is being misused.</p>
+          <p>You may sign in with an email and password or through a supported third-party provider. Keep your credentials and access to that account secure, and provide accurate information. You are responsible for activity performed through your BestViews.world account. Contact <a href="mailto:support@mikolajpiech.com">support@mikolajpiech.com</a> if you believe your account is being misused.</p>
         </section>
 
         <section>

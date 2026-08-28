@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         <section>
           <h2>Information we collect</h2>
           <h3>Account information</h3>
-          <p>When you continue with Google, we receive information made available by Google, such as your name, email address, profile image, and provider account identifier. We do not receive your Google password.</p>
+          <p>When you create an account with email and password, Supabase securely handles your email and authentication credentials; BestViews.world does not receive or store your readable password. When you continue with Google, we receive information made available by Google, such as your name, email address, profile image, and provider account identifier. We do not receive your Google password.</p>
           <h3>Things you choose to add</h3>
           <p>This includes viewpoints and their exact coordinates, photos, captions, practical tips, saved and visited places, collections, follows, and other community activity.</p>
           <h3>Location</h3>

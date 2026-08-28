@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
-import { ArrowLeft, Bookmark, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun, X } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
+import { ArrowLeft, Bookmark, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import AuthDialog from '../../auth-dialog';
 import { getSupabaseBrowserClient } from '../../supabase';
 import type { Viewpoint } from '../../view-data';
 
@@ -19,42 +19,6 @@ function mapTips(data: Record<string, unknown>[] | null): Tip[] {
     const profile = Array.isArray(profileValue) ? profileValue[0] : profileValue;
     return { id: String(row.id), body: String(row.body), status: String(row.status), author: profile && typeof profile === 'object' && 'display_name' in profile ? String(profile.display_name) : 'Traveler' };
   });
-}
-
-function DetailAuth({ onClose }: { onClose: () => void }) {
-  const [closing, setClosing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const requestClose = () => {
-    if (closing) return;
-    setClosing(true);
-    window.setTimeout(onClose, 190);
-  };
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') requestClose(); };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  });
-  const continueWithGoogle = async () => {
-    setError(null);
-    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
-    if (authError) setError(authError.message);
-  };
-  return (
-    <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
-      <section className="auth-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
-        <img src="/bestviews-logo.png" alt="" />
-        <h2>Keep this view with you.</h2>
-        <p>Sign in to save it, mark it visited, or leave a practical tip.</p>
-        <div className="oauth-actions">
-          <button type="button" onClick={() => void continueWithGoogle()}>
-            <span className="oauth-button-content"><FcGoogle size={21} aria-hidden="true" /><span>Continue with Google</span></span>
-          </button>
-        </div>
-        {error && <p className="submit-error">{error}</p>}
-      </section>
-    </div>
-  );
 }
 
 export default function ViewDetail({ view }: { view: Viewpoint }) {
@@ -170,7 +134,7 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
         </aside>
       </div>
 
-      {authOpen && <DetailAuth onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthDialog context="view" onClose={() => setAuthOpen(false)} />}
       {toast && <div className="toast" role="status"><Check size={15} /> {toast}</div>}
     </main>
   );
