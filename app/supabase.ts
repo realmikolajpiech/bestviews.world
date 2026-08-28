@@ -20,7 +20,9 @@ export function createSupabaseServerClient() {
 export function getSupabaseBrowserClient() {
   if (!browserClient) {
     const config = requireConfig();
-    browserClient = createClient(config.supabaseUrl, config.supabaseKey);
+    browserClient = createClient(config.supabaseUrl, config.supabaseKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    });
   }
   return browserClient;
 }

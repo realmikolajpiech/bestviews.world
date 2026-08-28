@@ -55,7 +55,12 @@ export default function AuthDialog({ onClose, context = 'general' }: { onClose: 
   const continueWithGoogle = async () => {
     resetFeedback();
     setLoading(true);
-    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
+    const callbackUrl = new URL('/auth/callback', window.location.origin);
+    callbackUrl.searchParams.set('next', `${window.location.pathname}${window.location.search}`);
+    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: callbackUrl.toString() },
+    });
     if (authError) { setError(friendlyAuthError(authError.message)); setLoading(false); }
   };
 
@@ -75,7 +80,9 @@ export default function AuthDialog({ onClose, context = 'general' }: { onClose: 
     }
 
     if (mode === 'signup') {
-      const { data, error: authError } = await supabase.auth.signUp({ email: normalizedEmail, password, options: { emailRedirectTo: window.location.href } });
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      callbackUrl.searchParams.set('next', `${window.location.pathname}${window.location.search}`);
+      const { data, error: authError } = await supabase.auth.signUp({ email: normalizedEmail, password, options: { emailRedirectTo: callbackUrl.toString() } });
       setLoading(false);
       if (authError) setError(friendlyAuthError(authError.message));
       else if (data.session) requestClose();

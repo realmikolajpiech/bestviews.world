@@ -928,18 +928,29 @@ a { text-decoration: none; }
 }
 
 .auth-reset-page { min-height: 100vh; padding: 27px; background: #f5f6f2; display: grid; place-items: center; }
+.auth-callback-page { min-height: 100vh; padding: 27px; background: #f5f6f2; display: grid; place-items: center; }
 .auth-reset-brand { position: fixed; top: 27px; left: 27px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 680; }
+.auth-reset-brand img { width: 28px; height: 28px; border-radius: 50%; }
 .auth-reset-card { width: min(430px,100%); padding: 36px; border: 1px solid #dfe3dc; border-radius: 24px; background: #fafbf7; box-shadow: 0 20px 70px rgba(20,29,21,.1); }
 .auth-reset-card > img { width: 48px; height: 48px; border-radius: 50%; }
 .auth-reset-card h1 { margin: 21px 0 7px; font-size: 30px; line-height: 1; letter-spacing: -1.2px; }
 .auth-reset-card > p, .auth-reset-complete > p { margin: 0 0 24px; color: #747c75; font-size: 12px; line-height: 1.55; }
 .auth-reset-complete > span { width: 48px; height: 48px; border-radius: 50%; background: var(--lime); display: grid; place-items: center; }
 .auth-reset-complete > a { height: 46px; border-radius: 11px; background: var(--ink); color: white; display: grid; place-items: center; font-size: 12px; font-weight: 680; }
+.auth-callback-card { width: min(410px,100%); padding: 38px; border: 1px solid #dfe3dc; border-radius: 24px; background: #fafbf7; box-shadow: 0 20px 70px rgba(20,29,21,.1); text-align: center; }
+.auth-callback-card > svg { width: 44px; height: 44px; margin: 0 auto; padding: 11px; border-radius: 50%; background: var(--lime); }
+.auth-callback-spinner { animation: auth-callback-spin .8s linear infinite; }
+.auth-callback-card h1 { margin: 19px 0 8px; font-size: 28px; line-height: 1.05; letter-spacing: -1.2px; }
+.auth-callback-card p { margin: 0; color: #747c75; font-size: 13px; line-height: 1.55; }
+.auth-callback-card > a { height: 44px; margin-top: 22px; border-radius: 11px; background: var(--ink); color: white; display: grid; place-items: center; font-size: 12px; font-weight: 680; }
+@keyframes auth-callback-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 540px) {
   .auth-reset-page { padding: 84px 16px 24px; align-items: start; }
+  .auth-callback-page { padding: 84px 16px 24px; align-items: start; }
   .auth-reset-brand { top: 25px; left: 18px; }
   .auth-reset-card { padding: 28px 22px; }
+  .auth-callback-card { padding: 30px 22px; }
 }
 
 /* Mobile app experience */
