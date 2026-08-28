@@ -14,6 +14,27 @@ type BaseMapProps = {
   ariaLabel: string;
 };
 
+function createExactMarkerElement(picker = false) {
+  const shell = document.createElement('div');
+  shell.className = `exact-map-marker-shell${picker ? ' picker' : ''}`;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 44 52');
+  svg.setAttribute('aria-hidden', 'true');
+  const pin = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  pin.setAttribute('d', 'M22 50C17 41 5 31 5 20a17 17 0 1 1 34 0c0 11-12 21-17 30Z');
+  pin.setAttribute('fill', '#17201a');
+  pin.setAttribute('stroke', '#fff');
+  pin.setAttribute('stroke-width', '3');
+  const center = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  center.setAttribute('cx', '22');
+  center.setAttribute('cy', '20');
+  center.setAttribute('r', '6');
+  center.setAttribute('fill', '#d8ff63');
+  svg.append(pin, center);
+  shell.append(svg);
+  return shell;
+}
+
 export function ExploreMap({
   viewpoints,
   selected,
@@ -118,8 +139,7 @@ export function ViewpointMap({
         zoom: 13.5,
       });
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
-      const element = document.createElement('div');
-      element.className = 'exact-map-marker';
+      const element = createExactMarkerElement();
       element.setAttribute('aria-label', 'Exact viewpoint');
       new Marker({ element, anchor: 'bottom' })
         .setLngLat([coordinate.longitude, coordinate.latitude])
@@ -165,8 +185,7 @@ export function LocationPickerMap({
       mapRef.current = map;
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
 
-      const element = document.createElement('div');
-      element.className = 'exact-map-marker picker';
+      const element = createExactMarkerElement(true);
       const marker = new Marker({ element, anchor: 'bottom', draggable: true })
         .setLngLat([initial.longitude, initial.latitude]);
       markerRef.current = marker;
