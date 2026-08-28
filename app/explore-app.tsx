@@ -39,6 +39,20 @@ const LocationPickerMap = dynamic(() => import('./maplibre-map').then((module) =
 type Surface = 'explore' | 'map' | 'saved';
 type PhotoLocationState = 'idle' | 'scanning' | 'found' | 'missing' | 'unreadable';
 type PlaceLookupState = 'idle' | 'loading' | 'found' | 'failed';
+type LocationSearchState = 'idle' | 'loading' | 'ready' | 'empty' | 'failed';
+type CoordinateSource = 'photo' | 'device' | 'search' | 'manual';
+type ShareMode = 'past' | 'now';
+type LiveLocationState = 'idle' | 'locating' | 'found' | 'failed';
+type LocationSuggestion = {
+  id: string;
+  name: string;
+  context: string;
+  label: string;
+  region: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+};
 
 function useAnimatedModalClose(onClose: () => void) {
   const [closing, setClosing] = useState(false);
@@ -258,7 +272,18 @@ function SearchDialog({ viewpoints, onClose }: { viewpoints: Viewpoint[]; onClos
   );
 }
 
-function formatCoordinates({ latitude, longitude }: Coordinates) { return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`; }
+function formatCoordinates({ latitude, longitude }: Coordinates) { return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`; }
+function localDateTimeValue(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+function timezoneOffsetFor(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const absoluteOffset = Math.abs(offsetMinutes);
+  return `${sign}${pad(Math.floor(absoluteOffset / 60))}:${pad(absoluteOffset % 60)}`;
+}
 function photoContentType(file: File) {
   if (file.type === 'image/jpeg' || file.type === 'image/jpg') return 'image/jpeg';
   if (file.type === 'image/png' || file.type === 'image/webp') return file.type;
@@ -282,6 +307,8 @@ function makeSlug(title: string) {
 
 function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => void; onDone: (title: string) => void }) {
   const { closing, requestClose, closeThen } = useAnimatedModalClose(onClose);
+  const [mobileModeChoice] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches);
+  const [shareMode, setShareMode] = useState<ShareMode | null>(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches ? null : 'past');
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [title, setTitle] = useState('');
   const [region, setRegion] = useState('');
@@ -291,21 +318,58 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
   const [category, setCategory] = useState<ViewCategory>('Hidden gems');
   const [coordinate, setCoordinate] = useState<Coordinates | null>(null);
   const [coordinateText, setCoordinateText] = useState('');
-  const [coordinateSource, setCoordinateSource] = useState<'photo' | 'device' | 'manual' | null>(null);
+  const [coordinateSource, setCoordinateSource] = useState<CoordinateSource | null>(null);
   const [capturedAtLocal, setCapturedAtLocal] = useState<string | null>(null);
   const [captureTimezoneOffset, setCaptureTimezoneOffset] = useState<string | null>(null);
   const [captureTimeSource, setCaptureTimeSource] = useState<'exif' | 'file' | null>(null);
   const [placeLookupState, setPlaceLookupState] = useState<PlaceLookupState>('idle');
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
+  const [locationSearchState, setLocationSearchState] = useState<LocationSearchState>('idle');
+  const [locationSearchOpen, setLocationSearchOpen] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoLocationState, setPhotoLocationState] = useState<PhotoLocationState>('idle');
+  const [liveLocationState, setLiveLocationState] = useState<LiveLocationState>('idle');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const photoReadId = useRef(0);
+  const placeLookupId = useRef(0);
+  const liveLocationId = useRef(0);
+  const locationSearchId = useRef(0);
   const photoPreview = useMemo(() => photo ? URL.createObjectURL(photo) : null, [photo]);
 
   useEffect(() => () => { if (photoPreview) URL.revokeObjectURL(photoPreview); }, [photoPreview]);
 
-  const updateCoordinate = (next: Coordinates, source: 'photo' | 'device' | 'manual' = 'manual') => {
+  useEffect(() => {
+    const query = locationQuery.trim();
+    if (!locationSearchOpen || query.length < 3) return;
+
+    const searchId = ++locationSearchId.current;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void fetch(`/api/location-search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+        .then(async (response) => {
+          const data = await response.json() as { suggestions?: LocationSuggestion[] };
+          if (searchId !== locationSearchId.current) return;
+          if (!response.ok) throw new Error('Search unavailable');
+          const suggestions = data.suggestions || [];
+          setLocationSuggestions(suggestions);
+          setLocationSearchState(suggestions.length ? 'ready' : 'empty');
+        })
+        .catch(() => {
+          if (controller.signal.aborted || searchId !== locationSearchId.current) return;
+          setLocationSuggestions([]);
+          setLocationSearchState('failed');
+        });
+    }, 450);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [locationQuery, locationSearchOpen]);
+
+  const updateCoordinate = (next: Coordinates, source: CoordinateSource = 'manual') => {
     setCoordinate(next);
     setCoordinateText(formatCoordinates(next));
     setCoordinateSource(source);
@@ -318,15 +382,89 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
       const params = new URLSearchParams({ lat: String(next.latitude), lon: String(next.longitude) });
       const response = await fetch(`/api/reverse-geocode?${params}`);
       const place = await response.json() as { region?: string; country?: string };
-      if (requestId !== photoReadId.current) return;
+      if (requestId !== placeLookupId.current) return;
       if (response.ok && place.region && place.country) {
         setRegion((current) => current.trim() || place.region || '');
         setCountry((current) => current.trim() || place.country || '');
+        setLocationQuery((current) => current.trim() || `${place.region}, ${place.country}`);
+        setLocationSearchState('idle');
+        setLocationSearchOpen(false);
         setPlaceLookupState('found');
       } else setPlaceLookupState('failed');
     } catch {
-      if (requestId === photoReadId.current) setPlaceLookupState('failed');
+      if (requestId === placeLookupId.current) setPlaceLookupState('failed');
     }
+  };
+
+  const resetCaptureChoice = () => {
+    photoReadId.current += 1;
+    placeLookupId.current += 1;
+    setPhoto(null);
+    setPhotoLocationState('idle');
+    setCoordinate(null);
+    setCoordinateText('');
+    setCoordinateSource(null);
+    setRegion('');
+    setCountry('');
+    setLocationQuery('');
+    setLocationSuggestions([]);
+    setLocationSearchState('idle');
+    setLocationSearchOpen(false);
+    setPlaceLookupState('idle');
+    setCapturedAtLocal(null);
+    setCaptureTimezoneOffset(null);
+    setCaptureTimeSource(null);
+  };
+
+  const choosePastShare = () => {
+    liveLocationId.current += 1;
+    resetCaptureChoice();
+    setShareMode('past');
+    setLiveLocationState('idle');
+    setError(null);
+  };
+
+  const chooseLiveShare = () => {
+    const now = new Date();
+    const liveRequestId = ++liveLocationId.current;
+    resetCaptureChoice();
+    setShareMode('now');
+    setCapturedAtLocal(localDateTimeValue(now));
+    setCaptureTimezoneOffset(timezoneOffsetFor(now));
+    setCaptureTimeSource(null);
+    setLiveLocationState('locating');
+    setError(null);
+
+    if (!navigator.geolocation) {
+      setLiveLocationState('failed');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        if (liveRequestId !== liveLocationId.current) return;
+        const next = { latitude: coords.latitude, longitude: coords.longitude };
+        updateCoordinate(next, 'device');
+        setLiveLocationState('found');
+        const placeRequestId = ++placeLookupId.current;
+        void lookupPlace(next, placeRequestId);
+      },
+      () => {
+        if (liveRequestId === liveLocationId.current) setLiveLocationState('failed');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 15000 },
+    );
+  };
+
+  const chooseLocationSuggestion = (suggestion: LocationSuggestion) => {
+    setLocationQuery(suggestion.label);
+    setRegion(suggestion.region);
+    setCountry(suggestion.country);
+    setLocationSuggestions([]);
+    setLocationSearchState('idle');
+    setLocationSearchOpen(false);
+    setPlaceLookupState('found');
+    updateCoordinate({ latitude: suggestion.latitude, longitude: suggestion.longitude }, 'search');
   };
 
   const handlePhoto = async (file: File | undefined) => {
@@ -341,12 +479,19 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
       setCoordinateSource(null);
     }
     setPhoto(file);
-    setCapturedAtLocal(null);
-    setCaptureTimezoneOffset(null);
-    setCaptureTimeSource(null);
+    if (shareMode !== 'now') {
+      setCapturedAtLocal(null);
+      setCaptureTimezoneOffset(null);
+      setCaptureTimeSource(null);
+    }
     setPlaceLookupState('idle');
     setError(null);
     setPhotoLocationState('scanning');
+
+    if (shareMode === 'now') {
+      setPhotoLocationState('idle');
+      return;
+    }
 
     const [result, captureTime] = await Promise.all([
       readPhotoLocation(file),
@@ -361,7 +506,8 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     if (result.kind === 'found') {
       updateCoordinate(result.coordinates, 'photo');
       setPhotoLocationState('found');
-      void lookupPlace(result.coordinates, readId);
+      const placeRequestId = ++placeLookupId.current;
+      void lookupPlace(result.coordinates, placeRequestId);
     } else {
       setPhotoLocationState(result.kind);
     }
@@ -371,6 +517,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     setError(null);
     if (step === 1) {
       if (!photo) return setError('Choose a photo you took there.');
+      if (shareMode === 'now' && !capturedAtLocal) return setError('Add when you were there.');
       return setStep(2);
     }
     const parsed = coordinate ?? parseCoordinates(coordinateText);
@@ -405,35 +552,149 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     closeThen(() => onDone(title.trim()));
   };
 
+  const findingPlace = placeLookupState === 'loading' || locationSearchState === 'loading';
+
+  const goBack = () => {
+    setError(null);
+    if (step === 1 && mobileModeChoice) {
+      liveLocationId.current += 1;
+      setShareMode(null);
+      setLiveLocationState('idle');
+      return;
+    }
+    setStep((step - 1) as 1 | 2);
+  };
+
   return (
     <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
       <section className="submit-dialog" role="dialog" aria-modal="true" aria-label="Share a viewpoint" onMouseDown={(event) => event.stopPropagation()}>
         <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
-        <div className="share-flow-head"><span>Share a view</span><small>{step} of 3</small></div>
-        <div className="share-progress" aria-hidden="true">{[1, 2, 3].map((item) => <i className={item <= step ? 'active' : ''} key={item} />)}</div>
+        <div className="share-flow-head"><span>Share a view</span>{shareMode && <small>{step} of 3</small>}</div>
+        {shareMode && <div className="share-progress" aria-hidden="true">{[1, 2, 3].map((item) => <i className={item <= step ? 'active' : ''} key={item} />)}</div>}
 
-        {step === 1 && <div className="share-step share-photo-step">
+        {shareMode === null && <div className="share-step share-mode-step">
+          <h2>When was this view?</h2>
+          <p>Choose how you want to share it.</p>
+          <div className="share-mode-options">
+            <button type="button" onClick={choosePastShare}>
+              <span><Camera size={19} /></span>
+              <strong>From a past visit<small>Choose a photo and mark where it was taken.</small></strong>
+              <ChevronRight size={17} />
+            </button>
+            <button type="button" onClick={chooseLiveShare}>
+              <span><Navigation size={19} /></span>
+              <strong>I’m here now<small>Use your live location and current time.</small></strong>
+              <ChevronRight size={17} />
+            </button>
+          </div>
+        </div>}
+
+        {shareMode && step === 1 && <div className={`share-step share-photo-step ${shareMode === 'now' ? 'share-now-photo-step' : ''}`}>
           <h2>Start with the view.</h2>
-          <p>Pick the photo that made you stop.</p>
+          <p>{shareMode === 'now' ? 'Take or choose the photo you are looking at.' : 'Pick the photo that made you stop.'}</p>
           <label className={`share-photo-stage ${photoPreview ? 'has-photo' : ''}`} htmlFor="viewpoint-photo" style={photoPreview ? { backgroundImage: `url('${photoPreview}')` } : undefined}>
             <span><Camera size={24} /><strong>{photo ? 'Choose another photo' : 'Choose a photo'}</strong><small>{photo ? 'From your device gallery' : 'JPEG, PNG, or WebP · up to 8 MB'}</small></span>
           </label>
           <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handlePhoto(event.target.files?.[0]); event.currentTarget.value = ''; }} />
+          {shareMode === 'now' && <div className="share-live-meta">
+            <label htmlFor="viewpoint-live-time">Time
+              <input
+                id="viewpoint-live-time"
+                type="datetime-local"
+                value={capturedAtLocal || ''}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setCapturedAtLocal(value || null);
+                  const selectedDate = new Date(value);
+                  setCaptureTimezoneOffset(value && !Number.isNaN(selectedDate.getTime()) ? timezoneOffsetFor(selectedDate) : null);
+                  setCaptureTimeSource(null);
+                  setError(null);
+                }}
+              />
+            </label>
+            <small className={`share-live-location ${liveLocationState}`}>
+              {liveLocationState === 'locating' && 'Getting your live location…'}
+              {liveLocationState === 'found' && 'Live location ready'}
+              {liveLocationState === 'failed' && 'Location unavailable — place the pin manually next.'}
+            </small>
+          </div>}
         </div>}
 
-        {step === 2 && <div className="share-step share-place-step">
+        {shareMode && step === 2 && <div className="share-step share-place-step">
           <h2>Where were you standing?</h2>
-          <p>{coordinateSource === 'photo' ? 'We placed the pin from the photo. Check that it is the exact viewpoint.' : coordinateSource === 'device' ? 'We used your current location. Check that the pin is exactly right.' : 'Tap the map as precisely as you can.'}</p>
-          <LocationPickerMap coordinate={coordinate} onChange={(next) => updateCoordinate(next, 'manual')} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
-          <div className="share-place-fields">
-            <label>City or region<input value={region} onChange={(event) => setRegion(event.target.value)} placeholder={placeLookupState === 'loading' ? 'Finding nearby place…' : 'South Tyrol'} autoFocus={coordinateSource !== 'photo'} /></label>
-            <label>Country<input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="Italy" /></label>
+          <p>{coordinateSource === 'photo' ? 'We placed the pin from the photo. Check that it is the exact viewpoint.' : coordinateSource === 'device' ? 'We used your current location. Check that the pin is exactly right.' : coordinateSource === 'search' ? 'We moved the pin to that place. Fine-tune the exact viewpoint on the map.' : 'Search for the place, then tap the map as precisely as you can.'}</p>
+          <div
+            className="share-place-search"
+            onFocus={(event) => {
+              if ((event.target as HTMLElement).id !== 'viewpoint-location-search') return;
+              if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+              if (locationQuery.trim().length >= 3) {
+                setLocationSearchOpen(true);
+                setLocationSearchState('loading');
+              }
+            }}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                setLocationSearchOpen(false);
+                setLocationSearchState('idle');
+              }
+            }}
+          >
+            <label htmlFor="viewpoint-location-search">Location</label>
+            <div className="location-controls-row">
+              <div className="location-search-column">
+                <div className={`share-coordinates place-search-input ${locationSearchState === 'loading' ? 'loading' : ''}`}>
+                  <Search size={16} />
+                  <input
+                    id="viewpoint-location-search"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={locationSearchOpen && locationQuery.trim().length >= 3}
+                    aria-controls="viewpoint-location-suggestions"
+                    autoComplete="off"
+                    value={locationQuery}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setLocationQuery(value);
+                      setLocationSuggestions([]);
+                      setLocationSearchState(value.trim().length >= 3 ? 'loading' : 'idle');
+                      setRegion('');
+                      setCountry('');
+                      setPlaceLookupState('idle');
+                      setLocationSearchOpen(true);
+                      setError(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        setLocationSearchOpen(false);
+                        setLocationSearchState('idle');
+                      }
+                    }}
+                    placeholder="Search a city, region, or landmark"
+                    autoFocus={coordinateSource !== 'photo'}
+                  />
+                </div>
+                {locationSearchOpen && locationQuery.trim().length >= 3 && <div className="place-search-suggestions" id="viewpoint-location-suggestions" role="listbox">
+                  {locationSearchState === 'loading' && <small className="place-search-message">Searching places…</small>}
+                  {locationSearchState === 'empty' && <small className="place-search-message">No places found. Try a nearby city or region.</small>}
+                  {locationSearchState === 'failed' && <small className="place-search-message">Search is unavailable right now. Try again.</small>}
+                  {locationSearchState === 'ready' && locationSuggestions.map((suggestion) => <button type="button" role="option" aria-selected="false" key={suggestion.id} onClick={() => chooseLocationSuggestion(suggestion)}>
+                    <MapPin size={15} />
+                    <span><strong>{suggestion.name}</strong>{suggestion.context && <small>{suggestion.context}</small>}</span>
+                  </button>)}
+                </div>}
+              </div>
+              <div className="share-coordinates location-coordinate-box">
+                <MapPin size={13} />
+                <input id="viewpoint-coordinates" aria-label="Viewpoint latitude and longitude" value={coordinateText} onFocus={() => { setLocationSearchOpen(false); setLocationSearchState('idle'); }} onChange={(event) => { const value = event.target.value; const parsed = parseCoordinates(value); setCoordinateText(value); setCoordinate(parsed); setCoordinateSource(parsed ? 'manual' : null); }} placeholder="Lat, lon" inputMode="decimal" />
+              </div>
+            </div>
           </div>
-          {placeLookupState !== 'idle' && <small className={`place-lookup-note ${placeLookupState}`} role="status">{placeLookupState === 'loading' && 'Finding the nearby place for you…'}{placeLookupState === 'found' && <>Place filled automatically · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></>}{placeLookupState === 'failed' && 'We could not fill the place automatically — just type it above.'}</small>}
-          <div className="share-coordinates"><MapPin size={15} /><input aria-label="Viewpoint latitude and longitude" value={coordinateText} onChange={(event) => { const value = event.target.value; const parsed = parseCoordinates(value); setCoordinateText(value); setCoordinate(parsed); setCoordinateSource(parsed ? 'manual' : null); }} placeholder="Or paste latitude, longitude" inputMode="decimal" /></div>
+          <LocationPickerMap coordinate={coordinate} onChange={(next) => updateCoordinate(next, 'manual')} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
+          <small className="place-search-attribution">Search data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · <a href="https://github.com/komoot/photon" target="_blank" rel="noreferrer">Photon</a></small>
         </div>}
 
-        {step === 3 && <div className="share-step share-details-step">
+        {shareMode && step === 3 && <div className="share-step share-details-step">
           <h2>What do you call it?</h2>
           <p>Just enough for someone else to find it.</p>
           <label className="share-name-field">Name<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Seceda ridgeline" autoFocus /></label>
@@ -450,14 +711,14 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
           </details>
         </div>}
 
-        <div className="share-flow-footer">
+        {shareMode && <div className="share-flow-footer">
           <span>{error && <small className="submit-error" role="alert">{error}</small>}</span>
-          <div>{step > 1 && <button className="share-back" type="button" onClick={() => { setError(null); setStep((step - 1) as 1 | 2); }}>Back</button>}
+          <div>{(step > 1 || mobileModeChoice) && <button className="share-back" type="button" onClick={goBack}>Back</button>}
             {step < 3
-              ? <button className="share-next" type="button" onClick={continueFlow} disabled={(step === 1 && photoLocationState === 'scanning') || (step === 2 && placeLookupState === 'loading' && (!region || !country))}>{step === 1 && photoLocationState === 'scanning' ? 'Checking photo…' : step === 2 && placeLookupState === 'loading' && (!region || !country) ? 'Finding place…' : step === 1 && photoLocationState === 'found' ? 'Review location' : 'Continue'} <ChevronRight size={16} /></button>
+              ? <button className="share-next" type="button" onClick={continueFlow} disabled={(step === 1 && photoLocationState === 'scanning') || (step === 2 && findingPlace && (!region || !country))}>{step === 1 && photoLocationState === 'scanning' ? 'Checking photo…' : step === 2 && findingPlace && (!region || !country) ? 'Finding place…' : step === 1 && photoLocationState === 'found' ? 'Review location' : 'Continue'} <ChevronRight size={16} /></button>
               : <button className="share-next" type="button" onClick={() => void submit()} disabled={submitting}>{submitting ? 'Sharing…' : 'Share this view'} <ChevronRight size={16} /></button>}
           </div>
-        </div>
+        </div>}
       </section>
     </div>
   );

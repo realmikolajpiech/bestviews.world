@@ -165,6 +165,7 @@ export function LocationPickerMap({
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<MapLibreMarker | null>(null);
   const onChangeRef = useRef(onChange);
+  const mapInteractionRef = useRef(false);
 
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
@@ -194,12 +195,14 @@ export function LocationPickerMap({
       const setLocation = (longitude: number, latitude: number) => {
         if (!marker.getElement().parentElement) marker.addTo(map);
         marker.setLngLat([longitude, latitude]);
+        mapInteractionRef.current = true;
         onChangeRef.current({ latitude, longitude });
       };
 
       map.on('click', (event) => setLocation(event.lngLat.lng, event.lngLat.lat));
       marker.on('dragend', () => {
         const point = marker.getLngLat();
+        mapInteractionRef.current = true;
         onChangeRef.current({ latitude: point.lat, longitude: point.lng });
       });
     });
@@ -220,6 +223,10 @@ export function LocationPickerMap({
     if (!map || !marker || !coordinate) return;
     if (!marker.getElement().parentElement) marker.addTo(map);
     marker.setLngLat([coordinate.longitude, coordinate.latitude]);
+    if (mapInteractionRef.current) {
+      mapInteractionRef.current = false;
+      return;
+    }
     map.flyTo({ center: [coordinate.longitude, coordinate.latitude], zoom: Math.max(map.getZoom(), 13), essential: true });
   }, [coordinate]);
 
