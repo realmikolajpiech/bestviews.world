@@ -14,7 +14,7 @@ export default function PrivacyPage() {
     <main className="legal-page">
       <nav className="legal-nav site-topbar" aria-label="Privacy page navigation">
         <SiteBrand />
-        <div className="legal-nav-links"><Link href="/"><ArrowLeft size={15} /> Discover</Link><span aria-current="page">Privacy</span><Link href="/terms">Terms</Link></div>
+        <div className="legal-nav-links"><Link href="/"><ArrowLeft size={15} /> Explore</Link><span aria-current="page">Privacy</span><Link href="/terms">Terms</Link></div>
       </nav>
 
       <article className="legal-document">

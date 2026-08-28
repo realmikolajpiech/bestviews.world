@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink, MapPin, Plus, UserRound } from 'lucide-react';
+import { ExternalLink, MapPin, Plus, Search, UserRound } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { createSupabaseServerClient } from '../../supabase';
+import HeaderProfileLink from '../../header-profile-link';
+import AppNavigation from '../../app-navigation';
 import { rowToViewpoint, type Viewpoint, type ViewpointRow } from '../../view-data';
 import SiteBrand from '../../site-brand';
 import FollowButton from './follow-button';
@@ -75,12 +77,16 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="profile-page">
-      <header className="profile-topbar site-topbar">
+      <header className="profile-topbar site-topbar app-page-topbar">
         <SiteBrand />
-        <nav>
-          <Link href="/"><ArrowLeft size={17} /> Discover</Link>
-          <Link className="profile-share" href="/?share=1">Share a view <Plus size={16} /></Link>
-        </nav>
+        <AppNavigation />
+        <div className="topbar-tools">
+          <Link className="compact-search topbar-search" href="/?search=1"><Search size={16} /><span>Search views</span></Link>
+          <nav className="profile-header-actions">
+            <Link className="profile-share" href="/?share=1">Share a view <Plus size={16} /></Link>
+            <HeaderProfileLink />
+          </nav>
+        </div>
       </header>
 
       <div className="profile-content public-profile-content">
@@ -111,7 +117,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
           <div className="profile-empty public-profile-empty">
             <span><UserRound size={24} /></span>
             <h2>{firstName} hasn’t shared a view yet.</h2>
-            <Link href="/">Discover views</Link>
+            <Link href="/">Explore views</Link>
           </div>
         )}
       </div>

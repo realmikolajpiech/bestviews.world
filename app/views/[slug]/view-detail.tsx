@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
-import { ArrowLeft, Bookmark, CalendarDays, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun, UserRound } from 'lucide-react';
+import { Bookmark, CalendarDays, Check, Clock3, Compass, Footprints, MapPin, Navigation, Search, Share2, Sun, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AuthDialog from '../../auth-dialog';
+import AppNavigation from '../../app-navigation';
 import SiteBrand from '../../site-brand';
 import { getSupabaseBrowserClient } from '../../supabase';
 import type { Viewpoint } from '../../view-data';
@@ -101,19 +102,22 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
   const viewerAvatar = user && (user.user_metadata.avatar_url || user.user_metadata.picture);
   return (
     <main className="view-screen">
-      <header className="view-screen-header site-topbar">
+      <header className="view-screen-header site-topbar app-page-topbar">
         <SiteBrand />
-        <nav className="view-header-actions" aria-label="View navigation">
-          <Link href="/" className="view-back"><ArrowLeft size={17} /> Discover</Link>
-          <button type="button" className="view-share" onClick={() => void share()}><Share2 size={16} /><span>Share</span></button>
-          {user ? (
-            <Link className="avatar view-header-avatar" href="/profile" aria-label="Open your profile">
-              {typeof viewerAvatar === 'string' && viewerAvatar ? <img src={viewerAvatar} alt="" /> : (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}
-            </Link>
-          ) : (
-            <button className="avatar view-header-avatar" type="button" aria-label="Sign in" onClick={() => setAuthOpen(true)}><UserRound size={18} /></button>
-          )}
-        </nav>
+        <AppNavigation />
+        <div className="topbar-tools">
+          <Link className="compact-search topbar-search" href="/?search=1"><Search size={16} /><span>Search views</span></Link>
+          <nav className="view-header-actions" aria-label="View navigation">
+            <button type="button" className="view-share" onClick={() => void share()}><Share2 size={16} /><span>Share</span></button>
+            {user ? (
+              <Link className="avatar view-header-avatar" href="/profile" aria-label="Open your profile">
+                {typeof viewerAvatar === 'string' && viewerAvatar ? <img src={viewerAvatar} alt="" /> : (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}
+              </Link>
+            ) : (
+              <button className="avatar view-header-avatar" type="button" aria-label="Sign in" onClick={() => setAuthOpen(true)}><UserRound size={18} /></button>
+            )}
+          </nav>
+        </div>
       </header>
 
       <div className="view-stage">

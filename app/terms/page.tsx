@@ -14,7 +14,7 @@ export default function TermsPage() {
     <main className="legal-page">
       <nav className="legal-nav site-topbar" aria-label="Terms page navigation">
         <SiteBrand />
-        <div className="legal-nav-links"><Link href="/"><ArrowLeft size={15} /> Discover</Link><Link href="/privacy">Privacy</Link><span aria-current="page">Terms</span></div>
+        <div className="legal-nav-links"><Link href="/"><ArrowLeft size={15} /> Explore</Link><Link href="/privacy">Privacy</Link><span aria-current="page">Terms</span></div>
       </nav>
 
       <article className="legal-document">

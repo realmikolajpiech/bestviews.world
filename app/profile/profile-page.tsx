@@ -3,9 +3,11 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { ArrowLeft, Camera, Check, ExternalLink, Heart, LoaderCircle, MapPin, Pencil, Plus, UserRound } from 'lucide-react';
+import { Camera, Check, ExternalLink, Heart, LoaderCircle, MapPin, Pencil, Plus, Search, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import AuthDialog from '../auth-dialog';
+import AppNavigation from '../app-navigation';
+import HeaderProfileLink from '../header-profile-link';
 import SiteBrand from '../site-brand';
 import { getSupabaseBrowserClient } from '../supabase';
 import { rowToViewpoint, type Viewpoint, type ViewpointRow } from '../view-data';
@@ -226,12 +228,16 @@ export default function ProfilePage() {
 
   return (
     <main className="profile-page">
-      <header className="profile-topbar site-topbar">
+      <header className="profile-topbar site-topbar app-page-topbar">
         <SiteBrand />
-        <nav>
-          <Link href="/"><ArrowLeft size={17} /> Discover</Link>
-          {user && <Link className="profile-share" href="/?share=1">Share a view <Plus size={16} /></Link>}
-        </nav>
+        <AppNavigation />
+        <div className="topbar-tools">
+          <Link className="compact-search topbar-search" href="/?search=1"><Search size={16} /><span>Search views</span></Link>
+          <nav className="profile-header-actions">
+            <Link className="profile-share" href="/?share=1">Share a view <Plus size={16} /></Link>
+            <HeaderProfileLink />
+          </nav>
+        </div>
       </header>
 
       {loading ? (
@@ -322,7 +328,7 @@ export default function ProfilePage() {
           ) : tab === 'visited' ? (
             <EmptyProfileSection title="Your map is still open." action="Find a view" href="/" />
           ) : tab === 'saved' ? (
-            <EmptyProfileSection title="Nothing waiting for you yet." action="Discover views" href="/" />
+            <EmptyProfileSection title="Nothing waiting for you yet." action="Explore views" href="/" />
           ) : (
             <EmptyProfileSection title="Share the first place that stayed with you." action="Share a view" href="/?share=1" />
           )}

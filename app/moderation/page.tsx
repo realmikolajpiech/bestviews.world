@@ -20,7 +20,7 @@ function ModerationHeader() {
   return (
     <header className="moderation-topbar site-topbar">
       <SiteBrand />
-      <nav><Link href="/"><ArrowLeft size={15} /> Discover</Link></nav>
+      <nav><Link href="/"><ArrowLeft size={15} /> Explore</Link></nav>
     </header>
   );
 }

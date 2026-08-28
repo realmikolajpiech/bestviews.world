@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AuthDialog from './auth-dialog';
+import AppNavigation, { type AppSurface } from './app-navigation';
 import { getSupabaseBrowserClient } from './supabase';
 import SiteBrand from './site-brand';
 import type { Coordinates } from './maplibre-map';
@@ -50,7 +51,7 @@ async function fetchPublishedViewpoint(id: string) {
   return viewpoint.image ? viewpoint : null;
 }
 
-type Surface = 'explore' | 'map' | 'saved';
+type Surface = AppSurface;
 type PhotoLocationState = 'idle' | 'scanning' | 'found' | 'missing' | 'unreadable';
 type PlaceLookupState = 'idle' | 'loading' | 'found' | 'failed';
 type LocationSearchState = 'idle' | 'loading' | 'ready' | 'empty' | 'failed';
@@ -145,7 +146,7 @@ function ExploreSurface({
     <section className="personal-discover content-surface">
       <header className="personal-heading">
         <div>
-          <h1>Find the best<br />views anywhere.</h1>
+          <h1>Find the best{' '}<br />views anywhere.</h1>
           <p>Shared by people who stood there.</p>
         </div>
       </header>
@@ -789,11 +790,39 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
     const applyUser = (nextUser: User | null) => {
       setUser(nextUser);
       if (!nextUser) setSaved(new Set());
-      if (new URLSearchParams(window.location.search).get('share') === '1') {
-        window.history.replaceState({}, '', window.location.pathname);
-        if (nextUser) setSubmitOpen(true);
-        else setAuthOpen(true);
+      const search = new URLSearchParams(window.location.search);
+      const requestedSurface = search.get('surface');
+      const wantsShare = search.get('share') === '1';
+      const wantsSearch = search.get('search') === '1';
+      let consumedRequest = false;
+
+      if (requestedSurface === 'map') {
+        setSurface('map');
+        consumedRequest = true;
+      } else if (requestedSurface === 'saved') {
+        if (nextUser) {
+          setSurface('saved');
+          consumedRequest = true;
+        } else {
+          setAuthOpen(true);
+        }
       }
+
+      if (wantsShare) {
+        if (nextUser) {
+          setSubmitOpen(true);
+          consumedRequest = true;
+        } else {
+          setAuthOpen(true);
+        }
+      }
+
+      if (wantsSearch) {
+        setSearchOpen(true);
+        consumedRequest = true;
+      }
+
+      if (consumedRequest) window.history.replaceState({}, '', window.location.pathname);
     };
     void supabase.auth.getUser().then(({ data }) => applyUser(data.user));
     const { data } = supabase.auth.onAuthStateChange((_event, session) => applyUser(session?.user ?? null));
@@ -827,29 +856,26 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
 
   return (
     <main className="explore-shell">
-      <header className="topbar site-topbar">
+      <header className="topbar site-topbar app-page-topbar">
         <SiteBrand />
-        <div className="topbar-center"><button className="search" type="button" aria-label="Search destinations" onClick={() => setSearchOpen(true)}><Search size={17} /><span>Search places and views</span></button></div>
-        <nav className="header-actions" aria-label="Primary navigation">
-          <button className="share-view-top" type="button" onClick={openSubmit}><Plus size={15} /><span>Share a view</span></button>
-          {user ? (
-            <Link className="avatar" href="/profile" aria-label="Open profile">
-              {userAvatarUrl(user)
-                ? <img src={userAvatarUrl(user) || ''} alt="" />
-                : (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}
-            </Link>
-          ) : <button className="avatar" type="button" aria-label="Sign in" onClick={() => setAuthOpen(true)}><UserRound size={18} strokeWidth={1.8} /></button>}
-        </nav>
-      </header>
-
-      <aside className="side-rail" aria-label="Explore sections">
-        <div>
-          <button className={`rail-item ${surface === 'explore' ? 'active' : ''}`} type="button" onClick={() => navigate('explore')}><Compass /><small>Explore</small></button>
-          <button className={`rail-item ${surface === 'map' ? 'active' : ''}`} type="button" onClick={() => navigate('map')}><MapIcon /><small>Map</small></button>
-          <button className={`rail-item ${surface === 'saved' ? 'active' : ''}`} type="button" onClick={() => requireUser(() => navigate('saved'))}><Bookmark fill={surface === 'saved' ? 'currentColor' : 'none'} /><small>Saved</small></button>
+        <AppNavigation
+          active={surface}
+          onNavigate={(next) => next === 'saved' ? requireUser(() => navigate(next)) : navigate(next)}
+        />
+        <div className="topbar-tools">
+          <div className="topbar-center"><button className="search compact-search" type="button" aria-label="Search destinations" onClick={() => setSearchOpen(true)}><Search size={17} /><span>Search views</span></button></div>
+          <nav className="header-actions" aria-label="Primary navigation">
+            <button className="share-view-top" type="button" onClick={openSubmit}><Plus size={15} /><span>Share a view</span></button>
+            {user ? (
+              <Link className="avatar" href="/profile" aria-label="Open profile">
+                {userAvatarUrl(user)
+                  ? <img src={userAvatarUrl(user) || ''} alt="" />
+                  : (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}
+              </Link>
+            ) : <button className="avatar" type="button" aria-label="Sign in" onClick={() => setAuthOpen(true)}><UserRound size={18} strokeWidth={1.8} /></button>}
+          </nav>
         </div>
-        <button className="rail-item add-item" type="button" onClick={openSubmit}><Camera /><small>Share</small></button>
-      </aside>
+      </header>
 
       {surface === 'explore' && <ExploreSurface viewpoints={viewpoints} category={category} setCategory={setCategory} saved={saved} toggleSaved={toggleSaved} onAdd={openSubmit} />}
       {surface === 'map' && <MapSurface viewpoints={viewpoints} saved={saved} toggleSaved={toggleSaved} />}
