@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js';
 import { ArrowLeft, Camera, Check, ExternalLink, Heart, LoaderCircle, MapPin, Pencil, Plus, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import AuthDialog from '../auth-dialog';
+import SiteBrand from '../site-brand';
 import { getSupabaseBrowserClient } from '../supabase';
 import { rowToViewpoint, type Viewpoint, type ViewpointRow } from '../view-data';
 
@@ -225,8 +226,8 @@ export default function ProfilePage() {
 
   return (
     <main className="profile-page">
-      <header className="profile-topbar">
-        <Link className="profile-brand" href="/"><img src="/bestviews-logo.png" alt="" /><span>BestViews<span>.world</span></span></Link>
+      <header className="profile-topbar site-topbar">
+        <SiteBrand />
         <nav>
           <Link href="/"><ArrowLeft size={17} /> Discover</Link>
           {user && <Link className="profile-share" href="/?share=1">Share a view <Plus size={16} /></Link>}

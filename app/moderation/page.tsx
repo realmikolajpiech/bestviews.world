@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, MapPin, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getSupabaseBrowserClient, publicPhotoUrl } from '../supabase';
+import SiteBrand from '../site-brand';
 
 type PublishedView = {
   id: string;
@@ -14,6 +15,15 @@ type PublishedView = {
   longitude: number;
   cover_photo_path: string | null;
 };
+
+function ModerationHeader() {
+  return (
+    <header className="moderation-topbar site-topbar">
+      <SiteBrand />
+      <nav><Link href="/"><ArrowLeft size={15} /> Discover</Link></nav>
+    </header>
+  );
+}
 
 export default function ModerationPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
@@ -37,21 +47,23 @@ export default function ModerationPage() {
     if (!error) setViews((current) => current.filter((view) => view.id !== id));
   };
 
-  if (authorized === null) return <main className="moderation-page"><p>Checking access…</p></main>;
-  if (!authorized) return <main className="moderation-page"><Link href="/"><ArrowLeft size={16} /> Back</Link><h1>Moderation is private.</h1><p>Sign in with a moderator account to manage published community content.</p></main>;
+  if (authorized === null) return <main className="moderation-page"><ModerationHeader /><div className="moderation-content"><p>Checking access…</p></div></main>;
+  if (!authorized) return <main className="moderation-page"><ModerationHeader /><div className="moderation-content"><h1>Moderation is private.</h1><p>Sign in with a moderator account to manage published community content.</p></div></main>;
 
   return (
     <main className="moderation-page">
-      <Link href="/"><ArrowLeft size={16} /> Back to BestViews</Link>
-      <header><h1>Published views</h1><p>{views.length ? `${views.length} recent community ${views.length === 1 ? 'view' : 'views'} · posts are already live` : 'No published views yet.'}</p></header>
-      <div className="moderation-list">
-        {views.map((view) => (
-          <article key={view.id}>
-            <span className="moderation-photo" style={{ backgroundImage: `url('${publicPhotoUrl(view.cover_photo_path) || ''}')` }} />
-            <div><h2>{view.title}</h2><p><MapPin size={12} /> {view.region}, {view.country}</p><small>{view.latitude.toFixed(6)}, {view.longitude.toFixed(6)}</small></div>
-            <nav><button type="button" onClick={() => void remove(view.id)}><X size={15} /> Remove</button></nav>
-          </article>
-        ))}
+      <ModerationHeader />
+      <div className="moderation-content">
+        <header><h1>Published views</h1><p>{views.length ? `${views.length} recent community ${views.length === 1 ? 'view' : 'views'} · posts are already live` : 'No published views yet.'}</p></header>
+        <div className="moderation-list">
+          {views.map((view) => (
+            <article key={view.id}>
+              <span className="moderation-photo" style={{ backgroundImage: `url('${publicPhotoUrl(view.cover_photo_path) || ''}')` }} />
+              <div><h2>{view.title}</h2><p><MapPin size={12} /> {view.region}, {view.country}</p><small>{view.latitude.toFixed(6)}, {view.longitude.toFixed(6)}</small></div>
+              <nav><button type="button" onClick={() => void remove(view.id)}><X size={15} /> Remove</button></nav>
+            </article>
+          ))}
+        </div>
       </div>
     </main>
   );

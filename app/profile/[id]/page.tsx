@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, MapPin, Plus, UserRound } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { createSupabaseServerClient } from '../../supabase';
 import { rowToViewpoint, type Viewpoint, type ViewpointRow } from '../../view-data';
+import SiteBrand from '../../site-brand';
 import FollowButton from './follow-button';
 
 const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, display_name, avatar_url)';
@@ -74,8 +75,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="profile-page">
-      <header className="profile-topbar">
-        <Link className="profile-brand" href="/"><img src="/bestviews-logo.png" alt="" /><span>BestViews<span>.world</span></span></Link>
+      <header className="profile-topbar site-topbar">
+        <SiteBrand />
         <nav>
           <Link href="/"><ArrowLeft size={17} /> Discover</Link>
           <Link className="profile-share" href="/?share=1">Share a view <Plus size={16} /></Link>

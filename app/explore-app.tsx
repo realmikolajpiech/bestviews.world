@@ -29,6 +29,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AuthDialog from './auth-dialog';
 import { getSupabaseBrowserClient } from './supabase';
+import SiteBrand from './site-brand';
 import type { Coordinates } from './maplibre-map';
 import { preparePhotoForUpload, readPhotoCaptureTime, readPhotoLocation } from './photo-location';
 import { categories, rowToViewpoint, type ViewCategory, type Viewpoint, type ViewpointRow } from './view-data';
@@ -91,15 +92,6 @@ const categoryIcons = {
   Coastlines: Waves,
   'Hidden gems': Gem,
 };
-
-function Brand() {
-  return (
-    <Link className="brand" href="/" aria-label="BestViews.world home">
-      <img className="brand-mark" src="/bestviews-logo.png" alt="" aria-hidden="true" />
-      <span>BestViews<span>.world</span></span>
-    </Link>
-  );
-}
 
 function PersonAvatar({ name, image }: { name: string; image?: string | null }) {
   return image
@@ -835,8 +827,8 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
 
   return (
     <main className="explore-shell">
-      <header className="topbar">
-        <Brand />
+      <header className="topbar site-topbar">
+        <SiteBrand />
         <div className="topbar-center"><button className="search" type="button" aria-label="Search destinations" onClick={() => setSearchOpen(true)}><Search size={17} /><span>Search places and views</span></button></div>
         <nav className="header-actions" aria-label="Primary navigation">
           <button className="share-view-top" type="button" onClick={openSubmit}><Plus size={15} /><span>Share a view</span></button>

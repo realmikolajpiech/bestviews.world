@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, FileCheck2, TriangleAlert } from 'lucide-react';
+import SiteBrand from '../site-brand';
 
 export const metadata: Metadata = {
   title: 'Terms of Service — BestViews.world',
@@ -11,9 +12,9 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <main className="legal-page">
-      <nav className="legal-nav" aria-label="Terms page navigation">
-        <Link href="/"><ArrowLeft size={17} /> BestViews.world</Link>
-        <div className="legal-nav-links"><Link href="/privacy">Privacy</Link><span aria-current="page">Terms</span></div>
+      <nav className="legal-nav site-topbar" aria-label="Terms page navigation">
+        <SiteBrand />
+        <div className="legal-nav-links"><Link href="/"><ArrowLeft size={15} /> Discover</Link><Link href="/privacy">Privacy</Link><span aria-current="page">Terms</span></div>
       </nav>
 
       <article className="legal-document">

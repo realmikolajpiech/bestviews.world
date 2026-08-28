@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
-import { ArrowLeft, Bookmark, CalendarDays, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun } from 'lucide-react';
+import { ArrowLeft, Bookmark, CalendarDays, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AuthDialog from '../../auth-dialog';
+import SiteBrand from '../../site-brand';
 import { getSupabaseBrowserClient } from '../../supabase';
 import type { Viewpoint } from '../../view-data';
 
@@ -97,12 +98,22 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
   };
 
   const directions = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(view.coordinates)}`;
+  const viewerAvatar = user && (user.user_metadata.avatar_url || user.user_metadata.picture);
   return (
     <main className="view-screen">
-      <header className="view-screen-header">
-        <Link href="/" className="view-back"><ArrowLeft size={17} /> Discover</Link>
-        <Link href="/" className="view-logo"><img className="brand-mark" src="/bestviews-logo.png" alt="" /><span>BestViews<span>.world</span></span></Link>
-        <button type="button" className="view-share" onClick={() => void share()}><Share2 size={16} /><span>Share</span></button>
+      <header className="view-screen-header site-topbar">
+        <SiteBrand />
+        <nav className="view-header-actions" aria-label="View navigation">
+          <Link href="/" className="view-back"><ArrowLeft size={17} /> Discover</Link>
+          <button type="button" className="view-share" onClick={() => void share()}><Share2 size={16} /><span>Share</span></button>
+          {user ? (
+            <Link className="avatar view-header-avatar" href="/profile" aria-label="Open your profile">
+              {typeof viewerAvatar === 'string' && viewerAvatar ? <img src={viewerAvatar} alt="" /> : (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}
+            </Link>
+          ) : (
+            <button className="avatar view-header-avatar" type="button" aria-label="Sign in" onClick={() => setAuthOpen(true)}><UserRound size={18} /></button>
+          )}
+        </nav>
       </header>
 
       <div className="view-stage">

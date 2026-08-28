@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, LocateFixed, ShieldCheck } from 'lucide-react';
+import SiteBrand from '../site-brand';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — BestViews.world',
@@ -11,9 +12,9 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <main className="legal-page">
-      <nav className="legal-nav" aria-label="Privacy page navigation">
-        <Link href="/"><ArrowLeft size={17} /> BestViews.world</Link>
-        <div className="legal-nav-links"><span aria-current="page">Privacy</span><Link href="/terms">Terms</Link></div>
+      <nav className="legal-nav site-topbar" aria-label="Privacy page navigation">
+        <SiteBrand />
+        <div className="legal-nav-links"><Link href="/"><ArrowLeft size={15} /> Discover</Link><span aria-current="page">Privacy</span><Link href="/terms">Terms</Link></div>
       </nav>
 
       <article className="legal-document">
