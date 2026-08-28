@@ -42,17 +42,25 @@ export default function AuthCallbackPage() {
 
   return (
     <main className="auth-callback-page">
-      <Link className="auth-reset-brand" href="/">
-        <img src="/bestviews-logo.png" alt="" />
-        <span>BestViews.world</span>
-      </Link>
-
-      <section className="auth-callback-card" role="status" aria-live="polite">
-        {error ? <AlertCircle aria-hidden="true" /> : <LoaderCircle className="auth-callback-spinner" aria-hidden="true" />}
-        <h1>{error ? 'Sign-in didn’t finish.' : 'Bringing your views back.'}</h1>
-        <p>{error || 'Just a moment while we finish signing you in.'}</p>
-        {error && <Link href="/">Try again</Link>}
-      </section>
+      {error ? (
+        <>
+          <Link className="auth-reset-brand" href="/">
+            <img src="/bestviews-logo.png" alt="" />
+            <span>BestViews.world</span>
+          </Link>
+          <section className="auth-callback-card" role="alert">
+            <AlertCircle aria-hidden="true" />
+            <h1>Sign-in didn’t work.</h1>
+            <p>{error}</p>
+            <Link href="/">Try again</Link>
+          </section>
+        </>
+      ) : (
+        <div className="auth-callback-mark" role="status" aria-label="Signing you in">
+          <span><LoaderCircle aria-hidden="true" /></span>
+          <img src="/bestviews-logo.png" alt="" />
+        </div>
+      )}
     </main>
   );
 }

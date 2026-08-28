@@ -20,23 +20,25 @@ import {
   Navigation,
   Plus,
   Search,
+  ShieldCheck,
   Sparkles,
   Sunset,
   UserRound,
   Waves,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AuthDialog from './auth-dialog';
 import { getSupabaseBrowserClient } from './supabase';
 import type { Coordinates } from './maplibre-map';
+import { preparePhotoForUpload, readPhotoLocation } from './photo-location';
 import { categories, type ViewCategory, type Viewpoint } from './view-data';
 
 const ExploreMap = dynamic(() => import('./maplibre-map').then((module) => module.ExploreMap), { ssr: false });
 const LocationPickerMap = dynamic(() => import('./maplibre-map').then((module) => module.LocationPickerMap), { ssr: false });
 
 type Surface = 'explore' | 'map' | 'saved';
-type SubmissionSummary = { title: string; status: string };
+type PhotoLocationState = 'idle' | 'scanning' | 'found' | 'missing' | 'unreadable';
 
 function useAnimatedModalClose(onClose: () => void) {
   const [closing, setClosing] = useState(false);
@@ -76,6 +78,11 @@ function PersonAvatar({ name, image }: { name: string; image?: string | null }) 
   return image
     ? <span className="person-avatar" style={{ backgroundImage: `url('${image}')` }} />
     : <span className="person-avatar avatar-fallback">{name.charAt(0).toUpperCase()}</span>;
+}
+
+function userAvatarUrl(user: User) {
+  const value = user.user_metadata.avatar_url || user.user_metadata.picture;
+  return typeof value === 'string' && value ? value : null;
 }
 
 function MomentCard({ view, saved, onSave }: { view: Viewpoint; saved: boolean; onSave: () => void }) {
@@ -251,25 +258,16 @@ function SearchDialog({ viewpoints, onClose }: { viewpoints: Viewpoint[]; onClos
   );
 }
 
-function ProfileDialog({ user, savedCount, visitedCount, submissions, onClose }: { user: User; savedCount: number; visitedCount: number; submissions: SubmissionSummary[]; onClose: () => void }) {
-  const { closing, requestClose, closeThen } = useAnimatedModalClose(onClose);
-  const signOut = async () => { await getSupabaseBrowserClient().auth.signOut(); closeThen(onClose); };
-  return (
-    <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
-      <section className="profile-dialog" role="dialog" aria-modal="true" aria-label="Your profile" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
-        <span className="profile-large-avatar">{(user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}</span>
-        <h2>{user.user_metadata.full_name || user.email?.split('@')[0] || 'Traveler'}</h2>
-        <p>{user.email}</p>
-        <div className="profile-stats"><span><strong>{savedCount}</strong><small>saved</small></span><span><strong>{visitedCount}</strong><small>visited</small></span></div>
-        {submissions.length > 0 && <div className="profile-submissions"><h3>Your shared views</h3>{submissions.map((submission, index) => <div key={`${submission.title}-${index}`}><span>{submission.title}</span><small>{submission.status}</small></div>)}</div>}
-        <button className="quiet-signout" type="button" onClick={() => void signOut()}>Sign out</button>
-      </section>
-    </div>
-  );
-}
-
 function formatCoordinates({ latitude, longitude }: Coordinates) { return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`; }
+function photoContentType(file: File) {
+  if (file.type === 'image/jpeg' || file.type === 'image/jpg') return 'image/jpeg';
+  if (file.type === 'image/png' || file.type === 'image/webp') return file.type;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'png') return 'image/png';
+  if (extension === 'webp') return 'image/webp';
+  return null;
+}
 function parseCoordinates(value: string): Coordinates | null {
   const numbers = value.match(/-?\d+(?:\.\d+)?/g)?.map(Number);
   if (!numbers || numbers.length < 2) return null;
@@ -293,28 +291,57 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
   const [category, setCategory] = useState<ViewCategory>('Hidden gems');
   const [coordinate, setCoordinate] = useState<Coordinates | null>(null);
   const [coordinateText, setCoordinateText] = useState('');
+  const [coordinateSource, setCoordinateSource] = useState<'photo' | 'manual' | null>(null);
+  const [detectedPhotoCoordinate, setDetectedPhotoCoordinate] = useState<Coordinates | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
-  const [photoMessage, setPhotoMessage] = useState('Choose one you took there');
+  const [photoLocationState, setPhotoLocationState] = useState<PhotoLocationState>('idle');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const photoReadId = useRef(0);
   const photoPreview = useMemo(() => photo ? URL.createObjectURL(photo) : null, [photo]);
 
   useEffect(() => () => { if (photoPreview) URL.revokeObjectURL(photoPreview); }, [photoPreview]);
 
-  const updateCoordinate = (next: Coordinates) => { setCoordinate(next); setCoordinateText(formatCoordinates(next)); setError(null); };
+  const updateCoordinate = (next: Coordinates, source: 'photo' | 'manual' = 'manual') => {
+    setCoordinate(next);
+    setCoordinateText(formatCoordinates(next));
+    setCoordinateSource(source);
+    setError(null);
+  };
   const handlePhoto = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) return setError('Photo must be under 8 MB.');
-    setPhoto(file); setError(null); setPhotoMessage('Looking for its location…');
-    try {
-      const { gps } = await import('exifr');
-      const location = await gps(file) as Coordinates | undefined;
-      if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) {
-        updateCoordinate(location);
-        setPhotoMessage('Location found — check it on the next step');
-      } else setPhotoMessage('Photo ready');
-    } catch { setPhotoMessage('Photo ready'); }
+    if (!photoContentType(file)) return setError('Choose a JPEG, PNG, or WebP photo.');
+    const readId = ++photoReadId.current;
+
+    if (coordinateSource === 'photo') {
+      setCoordinate(null);
+      setCoordinateText('');
+      setCoordinateSource(null);
+    }
+    setPhoto(file);
+    setDetectedPhotoCoordinate(null);
+    setError(null);
+    setPhotoLocationState('scanning');
+
+    const result = await readPhotoLocation(file);
+    if (readId !== photoReadId.current) return;
+    if (result.kind === 'found') {
+      setDetectedPhotoCoordinate(result.coordinates);
+      updateCoordinate(result.coordinates, 'photo');
+      setPhotoLocationState('found');
+    } else {
+      setPhotoLocationState(result.kind);
+    }
   };
+
+  const photoLocationMessage = {
+    idle: 'If the photo contains GPS data, we can place the pin for you.',
+    scanning: 'Checking this photo for an embedded GPS location…',
+    found: `Location found${detectedPhotoCoordinate ? `: ${formatCoordinates(detectedPhotoCoordinate)}` : ''}. Please confirm the pin.`,
+    missing: 'No GPS location was included. Many gallery apps remove it for privacy — you can place the pin next.',
+    unreadable: 'We could not read location data from this file. You can still place the pin next.',
+  }[photoLocationState];
 
   const continueFlow = () => {
     setError(null);
@@ -333,9 +360,15 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     if (!title.trim() || !region.trim() || !country.trim() || !parsed || !photo) return setError('Give this view a name.');
     setSubmitting(true); setError(null);
     const supabase = getSupabaseBrowserClient();
-    const extension = photo.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-    const storagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
-    const { error: uploadError } = await supabase.storage.from('viewpoint-photos').upload(storagePath, photo, { contentType: photo.type, upsert: false });
+    let preparedPhoto;
+    try {
+      preparedPhoto = await preparePhotoForUpload(photo);
+    } catch {
+      setSubmitting(false);
+      return setError('We could not safely prepare this photo. Try a different photo or browser.');
+    }
+    const storagePath = `${user.id}/${crypto.randomUUID()}.${preparedPhoto.extension}`;
+    const { error: uploadError } = await supabase.storage.from('viewpoint-photos').upload(storagePath, preparedPhoto.blob, { contentType: preparedPhoto.contentType, upsert: false });
     if (uploadError) { setSubmitting(false); return setError(uploadError.message); }
     const { error: insertError } = await supabase.from('viewpoints').insert({
       slug: makeSlug(title), contributor_id: user.id, title: title.trim(), short_title: title.trim(),
@@ -359,20 +392,24 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
           <h2>Start with the view.</h2>
           <p>Pick the photo that made you stop.</p>
           <label className={`share-photo-stage ${photoPreview ? 'has-photo' : ''}`} htmlFor="viewpoint-photo" style={photoPreview ? { backgroundImage: `url('${photoPreview}')` } : undefined}>
-            <span><Camera size={24} /><strong>{photo ? 'Choose another photo' : 'Choose a photo'}</strong><small>{photoMessage}</small></span>
+            <span><Camera size={24} /><strong>{photo ? 'Choose another photo' : 'Choose a photo'}</strong><small>{photo ? 'From your device gallery' : 'JPEG, PNG, or WebP · up to 8 MB'}</small></span>
           </label>
-          <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void handlePhoto(event.target.files?.[0])} />
+          <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handlePhoto(event.target.files?.[0]); event.currentTarget.value = ''; }} />
+          <div className={`photo-location-status ${photoLocationState}`} role="status" aria-live="polite">
+            {photoLocationState === 'found' ? <Check size={16} /> : <ShieldCheck size={16} />}
+            <span><strong>{photoLocationState === 'found' ? 'Photo location detected' : 'GPS is read on this device'}</strong><small>{photoLocationMessage}</small></span>
+          </div>
         </div>}
 
         {step === 2 && <div className="share-step share-place-step">
           <h2>Where were you standing?</h2>
-          <p>Tap the map as precisely as you can.</p>
-          <LocationPickerMap coordinate={coordinate} onChange={updateCoordinate} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
+          <p>{coordinateSource === 'photo' ? 'We placed the pin from the photo. Check that it is the exact viewpoint.' : 'Tap the map as precisely as you can.'}</p>
+          <LocationPickerMap coordinate={coordinate} onChange={(next) => updateCoordinate(next, 'manual')} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
           <div className="share-place-fields">
             <label>City or region<input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="South Tyrol" autoFocus /></label>
             <label>Country<input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="Italy" /></label>
           </div>
-          <div className="share-coordinates"><MapPin size={15} /><input value={coordinateText} onChange={(event) => { setCoordinateText(event.target.value); setCoordinate(parseCoordinates(event.target.value)); }} placeholder="Or paste latitude, longitude" inputMode="decimal" /></div>
+          <div className="share-coordinates"><MapPin size={15} /><input aria-label="Viewpoint latitude and longitude" value={coordinateText} onChange={(event) => { const value = event.target.value; const parsed = parseCoordinates(value); setCoordinateText(value); setCoordinate(parsed); setCoordinateSource(parsed ? 'manual' : null); }} placeholder="Or paste latitude, longitude" inputMode="decimal" /></div>
         </div>}
 
         {step === 3 && <div className="share-step share-details-step">
@@ -393,7 +430,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
           <span>{error && <small className="submit-error" role="alert">{error}</small>}</span>
           <div>{step > 1 && <button className="share-back" type="button" onClick={() => { setError(null); setStep((step - 1) as 1 | 2); }}>Back</button>}
             {step < 3
-              ? <button className="share-next" type="button" onClick={continueFlow}>Continue <ChevronRight size={16} /></button>
+              ? <button className="share-next" type="button" onClick={continueFlow} disabled={step === 1 && photoLocationState === 'scanning'}>{photoLocationState === 'scanning' ? 'Checking photo…' : 'Continue'} <ChevronRight size={16} /></button>
               : <button className="share-next" type="button" onClick={() => void submit()} disabled={submitting}>{submitting ? 'Sharing…' : 'Share this view'} <ChevronRight size={16} /></button>}
           </div>
         </div>
@@ -407,19 +444,21 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
   const [category, setCategory] = useState<string>('For you');
   const [user, setUser] = useState<User | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [visited, setVisited] = useState<Set<string>>(new Set());
-  const [submissions, setSubmissions] = useState<SubmissionSummary[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     const applyUser = (nextUser: User | null) => {
       setUser(nextUser);
-      if (!nextUser) { setSaved(new Set()); setVisited(new Set()); setSubmissions([]); }
+      if (!nextUser) setSaved(new Set());
+      if (new URLSearchParams(window.location.search).get('share') === '1') {
+        window.history.replaceState({}, '', window.location.pathname);
+        if (nextUser) setSubmitOpen(true);
+        else setAuthOpen(true);
+      }
     };
     void supabase.auth.getUser().then(({ data }) => applyUser(data.user));
     const { data } = supabase.auth.onAuthStateChange((_event, session) => applyUser(session?.user ?? null));
@@ -429,14 +468,8 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
   useEffect(() => {
     if (!user) return;
     const supabase = getSupabaseBrowserClient();
-    void Promise.all([
-      supabase.from('saves').select('viewpoint_id').eq('user_id', user.id),
-      supabase.from('visits').select('viewpoint_id').eq('user_id', user.id),
-      supabase.from('viewpoints').select('title, status').eq('contributor_id', user.id).order('created_at', { ascending: false }).limit(6),
-    ]).then(([saveResult, visitResult, submissionResult]) => {
+    void supabase.from('saves').select('viewpoint_id').eq('user_id', user.id).then((saveResult) => {
       if (!saveResult.error) setSaved(new Set((saveResult.data || []).map((row) => String(row.viewpoint_id))));
-      if (!visitResult.error) setVisited(new Set((visitResult.data || []).map((row) => String(row.viewpoint_id))));
-      if (!submissionResult.error) setSubmissions((submissionResult.data || []).map((row) => ({ title: String(row.title), status: String(row.status) })));
     });
   }, [user]);
 
@@ -464,7 +497,13 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
         <div className="topbar-center"><button className="search" type="button" aria-label="Search destinations" onClick={() => setSearchOpen(true)}><Search size={17} /><span>Search places and views</span></button></div>
         <nav className="header-actions" aria-label="Primary navigation">
           <button className="share-view-top" type="button" onClick={openSubmit}><Plus size={15} /><span>Share a view</span></button>
-          <button className="avatar" type="button" aria-label={user ? 'Open profile' : 'Sign in'} onClick={() => user ? setProfileOpen(true) : setAuthOpen(true)}>{user ? (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase() : <UserRound size={18} strokeWidth={1.8} />}</button>
+          {user ? (
+            <Link className="avatar" href="/profile" aria-label="Open profile">
+              {userAvatarUrl(user)
+                ? <img src={userAvatarUrl(user) || ''} alt="" />
+                : (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}
+            </Link>
+          ) : <button className="avatar" type="button" aria-label="Sign in" onClick={() => setAuthOpen(true)}><UserRound size={18} strokeWidth={1.8} /></button>}
         </nav>
       </header>
 
@@ -483,8 +522,7 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
 
       {searchOpen && <SearchDialog viewpoints={initialViewpoints} onClose={() => setSearchOpen(false)} />}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
-      {profileOpen && user && <ProfileDialog user={user} savedCount={saved.size} visitedCount={visited.size} submissions={submissions} onClose={() => setProfileOpen(false)} />}
-      {submitOpen && user && <SubmitDialog user={user} onClose={() => setSubmitOpen(false)} onDone={(title) => { setSubmissions((current) => [{ title, status: 'pending' }, ...current]); setSubmitOpen(false); showToast('Thanks — we’ll check the pin, then share it'); }} />}
+      {submitOpen && user && <SubmitDialog user={user} onClose={() => setSubmitOpen(false)} onDone={() => { setSubmitOpen(false); showToast('Thanks — we’ll check the pin, then share it'); }} />}
       {toast && <div className="toast" role="status"><Check size={15} /> {toast}</div>}
     </main>
   );
