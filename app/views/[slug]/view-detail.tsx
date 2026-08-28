@@ -48,8 +48,12 @@ function DetailAuth({ onClose }: { onClose: () => void }) {
         <h2>Keep this view with you.</h2>
         <p>Sign in to save it, mark it visited, or leave a practical tip.</p>
         <div className="oauth-actions">
-          <button type="button" onClick={() => void continueWith('google')}><FcGoogle className="oauth-logo" aria-hidden="true" />Continue with Google</button>
-          <button type="button" onClick={() => void continueWith('facebook')}><FaFacebook className="oauth-logo facebook-logo" aria-hidden="true" />Continue with Facebook</button>
+          <button type="button" onClick={() => void continueWith('google')}>
+            <span className="oauth-button-content"><FcGoogle size={21} aria-hidden="true" /><span>Continue with Google</span></span>
+          </button>
+          <button type="button" onClick={() => void continueWith('facebook')}>
+            <span className="oauth-button-content"><FaFacebook size={22} color="#1877f2" aria-hidden="true" /><span>Continue with Facebook</span></span>
+          </button>
         </div>
         {error && <p className="submit-error">{error}</p>}
       </section>
