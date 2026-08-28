@@ -80,7 +80,7 @@ export default function PrivacyPage() {
 
         <section id="deletion">
           <h2>Access, correction, and deletion</h2>
-          <p>You may ask to access, correct, export, or delete your personal information, or object to or restrict certain processing where applicable. To delete your BestViews.world account and associated personal information, email <a href="mailto:privacy@bestviews.world?subject=BestViews.world%20account%20deletion">privacy@bestviews.world</a> from the address connected to your account with the subject “Account deletion.” We may need to verify that you own the account before completing the request.</p>
+          <p>You may ask to access, correct, export, or delete your personal information, or object to or restrict certain processing where applicable. To delete your BestViews.world account and associated personal information, email <a href="mailto:support@mikolajpiech.com?subject=BestViews.world%20account%20deletion">support@mikolajpiech.com</a> from the address connected to your account with the subject “Account deletion.” We may need to verify that you own the account before completing the request.</p>
           <p>You can also disconnect BestViews.world from Google or Facebook through the connected-app settings in your provider account. Disconnecting a provider does not by itself delete your BestViews.world account; use the request above for full deletion. We will respond within the period required by applicable law.</p>
         </section>
 
@@ -96,7 +96,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2>Changes and contact</h2>
-          <p>We may update this policy as the service evolves. Material changes will be identified by a new date on this page. Questions or privacy requests can be sent to <a href="mailto:privacy@bestviews.world">privacy@bestviews.world</a>.</p>
+          <p>We may update this policy as the service evolves. Material changes will be identified by a new date on this page. Questions or privacy requests can be sent to <a href="mailto:support@mikolajpiech.com">support@mikolajpiech.com</a>.</p>
         </section>
       </article>
     </main>
