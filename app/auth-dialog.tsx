@@ -36,6 +36,19 @@ export default function AuthDialog({ onClose, context = 'general' }: { onClose: 
     return () => window.removeEventListener('keydown', handleKey);
   });
 
+  useEffect(() => {
+    const releasePendingAuth = () => setLoading(false);
+    const handleVisibility = () => { if (document.visibilityState === 'visible') releasePendingAuth(); };
+    window.addEventListener('pageshow', releasePendingAuth);
+    window.addEventListener('focus', releasePendingAuth);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('pageshow', releasePendingAuth);
+      window.removeEventListener('focus', releasePendingAuth);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
   const resetFeedback = () => { setError(null); setNotice(null); };
   const changeMode = (next: AuthMode) => { resetFeedback(); setPassword(''); setMode(next); };
 
