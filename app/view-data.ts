@@ -28,6 +28,7 @@ export type Viewpoint = {
   contributor: Contributor | null;
   capturedAtLocal: string | null;
   captureTimezoneOffset: string | null;
+  captureTimeSource: 'exif' | 'file' | null;
   createdAt: string;
 };
 
@@ -78,6 +79,7 @@ export function rowToViewpoint(row: ViewpointRow): Viewpoint {
     } : null,
     capturedAtLocal: row.captured_at_local ? String(row.captured_at_local) : null,
     captureTimezoneOffset: row.capture_timezone_offset ? String(row.capture_timezone_offset) : null,
+    captureTimeSource: row.capture_time_source === 'exif' || row.capture_time_source === 'file' ? row.capture_time_source : null,
     createdAt: row.created_at,
   };
 }

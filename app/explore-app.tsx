@@ -20,7 +20,6 @@ import {
   Navigation,
   Plus,
   Search,
-  ShieldCheck,
   Sparkles,
   Sunset,
   UserRound,
@@ -260,14 +259,6 @@ function SearchDialog({ viewpoints, onClose }: { viewpoints: Viewpoint[]; onClos
 }
 
 function formatCoordinates({ latitude, longitude }: Coordinates) { return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`; }
-function formatCaptureTime(localDateTime: string, timezoneOffset: string | null) {
-  const [date, time] = localDateTime.split('T');
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
-  const label = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })
-    .format(new Date(Date.UTC(year, month - 1, day, hour, minute)));
-  return timezoneOffset ? `${label} (UTC${timezoneOffset})` : `${label} (camera time)`;
-}
 function photoContentType(file: File) {
   if (file.type === 'image/jpeg' || file.type === 'image/jpg') return 'image/jpeg';
   if (file.type === 'image/png' || file.type === 'image/webp') return file.type;
@@ -300,10 +291,10 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
   const [category, setCategory] = useState<ViewCategory>('Hidden gems');
   const [coordinate, setCoordinate] = useState<Coordinates | null>(null);
   const [coordinateText, setCoordinateText] = useState('');
-  const [coordinateSource, setCoordinateSource] = useState<'photo' | 'manual' | null>(null);
-  const [detectedPhotoCoordinate, setDetectedPhotoCoordinate] = useState<Coordinates | null>(null);
+  const [coordinateSource, setCoordinateSource] = useState<'photo' | 'device' | 'manual' | null>(null);
   const [capturedAtLocal, setCapturedAtLocal] = useState<string | null>(null);
   const [captureTimezoneOffset, setCaptureTimezoneOffset] = useState<string | null>(null);
+  const [captureTimeSource, setCaptureTimeSource] = useState<'exif' | 'file' | null>(null);
   const [placeLookupState, setPlaceLookupState] = useState<PlaceLookupState>('idle');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoLocationState, setPhotoLocationState] = useState<PhotoLocationState>('idle');
@@ -314,12 +305,30 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
 
   useEffect(() => () => { if (photoPreview) URL.revokeObjectURL(photoPreview); }, [photoPreview]);
 
-  const updateCoordinate = (next: Coordinates, source: 'photo' | 'manual' = 'manual') => {
+  const updateCoordinate = (next: Coordinates, source: 'photo' | 'device' | 'manual' = 'manual') => {
     setCoordinate(next);
     setCoordinateText(formatCoordinates(next));
     setCoordinateSource(source);
     setError(null);
   };
+
+  const lookupPlace = async (next: Coordinates, requestId: number) => {
+    setPlaceLookupState('loading');
+    try {
+      const params = new URLSearchParams({ lat: String(next.latitude), lon: String(next.longitude) });
+      const response = await fetch(`/api/reverse-geocode?${params}`);
+      const place = await response.json() as { region?: string; country?: string };
+      if (requestId !== photoReadId.current) return;
+      if (response.ok && place.region && place.country) {
+        setRegion((current) => current.trim() || place.region || '');
+        setCountry((current) => current.trim() || place.country || '');
+        setPlaceLookupState('found');
+      } else setPlaceLookupState('failed');
+    } catch {
+      if (requestId === photoReadId.current) setPlaceLookupState('failed');
+    }
+  };
+
   const handlePhoto = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) return setError('Photo must be under 8 MB.');
@@ -332,9 +341,9 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
       setCoordinateSource(null);
     }
     setPhoto(file);
-    setDetectedPhotoCoordinate(null);
     setCapturedAtLocal(null);
     setCaptureTimezoneOffset(null);
+    setCaptureTimeSource(null);
     setPlaceLookupState('idle');
     setError(null);
     setPhotoLocationState('scanning');
@@ -347,37 +356,16 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     if (captureTime.kind === 'found') {
       setCapturedAtLocal(captureTime.localDateTime);
       setCaptureTimezoneOffset(captureTime.timezoneOffset);
+      setCaptureTimeSource(captureTime.source);
     }
     if (result.kind === 'found') {
-      setDetectedPhotoCoordinate(result.coordinates);
       updateCoordinate(result.coordinates, 'photo');
       setPhotoLocationState('found');
-      setPlaceLookupState('loading');
-      try {
-        const params = new URLSearchParams({ lat: String(result.coordinates.latitude), lon: String(result.coordinates.longitude) });
-        const response = await fetch(`/api/reverse-geocode?${params}`);
-        const place = await response.json() as { region?: string; country?: string };
-        if (readId !== photoReadId.current) return;
-        if (response.ok && place.region && place.country) {
-          setRegion((current) => current.trim() || place.region || '');
-          setCountry((current) => current.trim() || place.country || '');
-          setPlaceLookupState('found');
-        } else setPlaceLookupState('failed');
-      } catch {
-        if (readId === photoReadId.current) setPlaceLookupState('failed');
-      }
+      void lookupPlace(result.coordinates, readId);
     } else {
       setPhotoLocationState(result.kind);
     }
   };
-
-  const photoLocationMessage = {
-    idle: 'If the photo contains GPS data, we can place the pin for you.',
-    scanning: 'Checking this photo for an embedded GPS location…',
-    found: `Location found${detectedPhotoCoordinate ? `: ${formatCoordinates(detectedPhotoCoordinate)}` : ''}. Please confirm the pin.`,
-    missing: 'No GPS location was included. Many gallery apps remove it for privacy — you can place the pin next.',
-    unreadable: 'We could not read location data from this file. You can still place the pin next.',
-  }[photoLocationState];
 
   const continueFlow = () => {
     setError(null);
@@ -410,7 +398,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
       slug: makeSlug(title), contributor_id: user.id, title: title.trim(), short_title: title.trim(),
       region: region.trim(), country: country.trim(), latitude: parsed.latitude, longitude: parsed.longitude,
       look_direction: 'View from the marked spot', category, best_time: bestTime.trim() || null, access_summary: access.trim() || null,
-      cover_photo_path: storagePath, captured_at_local: capturedAtLocal, capture_timezone_offset: captureTimezoneOffset, status: 'pending',
+      cover_photo_path: storagePath, captured_at_local: capturedAtLocal, capture_timezone_offset: captureTimezoneOffset, capture_time_source: captureTimeSource, status: 'pending',
     });
     setSubmitting(false);
     if (insertError) { await supabase.storage.from('viewpoint-photos').remove([storagePath]); return setError(insertError.message); }
@@ -431,15 +419,11 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
             <span><Camera size={24} /><strong>{photo ? 'Choose another photo' : 'Choose a photo'}</strong><small>{photo ? 'From your device gallery' : 'JPEG, PNG, or WebP · up to 8 MB'}</small></span>
           </label>
           <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handlePhoto(event.target.files?.[0]); event.currentTarget.value = ''; }} />
-          <div className={`photo-location-status ${photoLocationState}`} role="status" aria-live="polite">
-            {photoLocationState === 'found' ? <Check size={16} /> : <ShieldCheck size={16} />}
-            <span><strong>{photoLocationState === 'found' ? 'Photo location detected' : 'GPS is read on this device'}</strong><small>{photoLocationMessage}{capturedAtLocal && <> Taken {formatCaptureTime(capturedAtLocal, captureTimezoneOffset)}.</>}</small></span>
-          </div>
         </div>}
 
         {step === 2 && <div className="share-step share-place-step">
           <h2>Where were you standing?</h2>
-          <p>{coordinateSource === 'photo' ? 'We placed the pin from the photo. Check that it is the exact viewpoint.' : 'Tap the map as precisely as you can.'}</p>
+          <p>{coordinateSource === 'photo' ? 'We placed the pin from the photo. Check that it is the exact viewpoint.' : coordinateSource === 'device' ? 'We used your current location. Check that the pin is exactly right.' : 'Tap the map as precisely as you can.'}</p>
           <LocationPickerMap coordinate={coordinate} onChange={(next) => updateCoordinate(next, 'manual')} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
           <div className="share-place-fields">
             <label>City or region<input value={region} onChange={(event) => setRegion(event.target.value)} placeholder={placeLookupState === 'loading' ? 'Finding nearby place…' : 'South Tyrol'} autoFocus={coordinateSource !== 'photo'} /></label>

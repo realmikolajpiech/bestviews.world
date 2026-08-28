@@ -125,7 +125,7 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
           </section>
 
           <section className="view-facts">
-            {view.capturedAtLocal && <div><CalendarDays /><span><small>Photo captured</small><strong>{capturedAtLabel(view.capturedAtLocal, view.captureTimezoneOffset)}</strong></span></div>}
+            {view.capturedAtLocal && <div><CalendarDays /><span><small>{view.captureTimeSource === 'file' ? 'Photo file date' : 'Photo captured'}</small><strong>{capturedAtLabel(view.capturedAtLocal, view.captureTimezoneOffset)}</strong></span></div>}
             {view.bestTime && <div><Clock3 /><span><small>Best time</small><strong>{view.bestTime}</strong></span></div>}
             {view.accessSummary && <div><Footprints /><span><small>From where</small><strong>{view.accessSummary}</strong></span></div>}
             {view.difficulty && <div><Compass /><span><small>Effort</small><strong>{view.difficulty}</strong></span></div>}

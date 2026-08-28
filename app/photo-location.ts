@@ -6,7 +6,7 @@ export type PhotoLocationResult =
   | { kind: 'unreadable' };
 
 export type PhotoCaptureTimeResult =
-  | { kind: 'found'; localDateTime: string; timezoneOffset: string | null }
+  | { kind: 'found'; localDateTime: string; timezoneOffset: string | null; source: 'exif' | 'file' }
   | { kind: 'missing' }
   | { kind: 'unreadable' };
 
@@ -59,7 +59,24 @@ function parseExifDateTime(value: unknown, offsetValue: unknown): PhotoCaptureTi
   const timezoneOffset = typeof offsetValue === 'string' && /^[+-](?:0\d|1[0-4]):[0-5]\d$/.test(offsetValue.trim())
     ? offsetValue.trim()
     : null;
-  return { kind: 'found', localDateTime: `${year}-${month}-${day}T${hour}:${minute}:${second}`, timezoneOffset };
+  return { kind: 'found', localDateTime: `${year}-${month}-${day}T${hour}:${minute}:${second}`, timezoneOffset, source: 'exif' };
+}
+
+function fileDateFallback(file: File): PhotoCaptureTimeResult {
+  const date = new Date(file.lastModified);
+  if (!file.lastModified || Number.isNaN(date.getTime()) || date.getFullYear() < 1990 || date.getTime() > Date.now() + 86400000) {
+    return { kind: 'missing' };
+  }
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const offsetMinutes = -date.getTimezoneOffset();
+  const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+  const absoluteOffset = Math.abs(offsetMinutes);
+  return {
+    kind: 'found',
+    localDateTime: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+    timezoneOffset: `${offsetSign}${pad(Math.floor(absoluteOffset / 60))}:${pad(absoluteOffset % 60)}`,
+    source: 'file',
+  };
 }
 
 /** Reads the camera's original local capture time without guessing a timezone. */
@@ -72,13 +89,14 @@ export async function readPhotoCaptureTime(file: File): Promise<PhotoCaptureTime
         reviveValues: false,
       },
     }) as Record<string, unknown> | undefined;
-    if (!metadata) return { kind: 'missing' };
-    return parseExifDateTime(
+    if (!metadata) return fileDateFallback(file);
+    const embeddedTime = parseExifDateTime(
       metadata.DateTimeOriginal ?? metadata.CreateDate,
       metadata.OffsetTimeOriginal,
     );
+    return embeddedTime.kind === 'found' ? embeddedTime : fileDateFallback(file);
   } catch {
-    return { kind: 'unreadable' };
+    return fileDateFallback(file);
   }
 }
 
