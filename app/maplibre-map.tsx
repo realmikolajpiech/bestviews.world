@@ -145,7 +145,7 @@ export function ViewpointMap({
     let disposed = false;
     let map: MapLibreMap | null = null;
 
-    void import('maplibre-gl').then(({ AttributionControl, Map, Marker, NavigationControl, setWorkerUrl }) => {
+    void import('maplibre-gl').then(({ AttributionControl, FullscreenControl, Map, Marker, NavigationControl, setWorkerUrl }) => {
       if (disposed || !containerRef.current) return;
       setWorkerUrl(MAPLIBRE_WORKER_URL);
       map = new Map({
@@ -157,6 +157,7 @@ export function ViewpointMap({
       });
       map.addControl(new AttributionControl({ compact: true }), 'bottom-right');
       collapseAttribution(map);
+      map.addControl(new FullscreenControl(), 'top-right');
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
       const element = createExactMarkerElement();
       element.setAttribute('aria-label', 'Exact viewpoint');

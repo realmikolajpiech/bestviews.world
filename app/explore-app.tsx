@@ -116,7 +116,7 @@ function MomentCard({ view, saved, onSave }: { view: Viewpoint; saved: boolean; 
         </Link>
       )}
       <button className={`moment-save ${saved ? 'saved' : ''}`} type="button" onClick={onSave} aria-label={`${saved ? 'Remove' : 'Save'} ${view.title}`}>
-        <Heart size={19} fill={saved ? 'currentColor' : 'none'} />
+        <Bookmark size={17} fill={saved ? 'currentColor' : 'none'} />
       </button>
       <div className="moment-copy">
         <h2>{view.title}</h2>
