@@ -791,9 +791,8 @@ a { text-decoration: none; }
 .oauth-actions { margin-top: 25px; display: grid; gap: 9px; }
 .oauth-actions button { position: relative; height: 47px; border: 1px solid #dce1d9; border-radius: 11px; background: white; color: #29312b; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
 .oauth-actions button:hover { background: #f3f5f0; border-color: #cfd5cc; }
-.oauth-actions button > span { position: absolute; left: 14px; width: 23px; height: 23px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; }
-.google-mark { border: 1px solid #e0e3dd; color: #2d69c7; background: white; }
-.facebook-mark { color: white; background: #1877f2; font-family: Arial,sans-serif; font-size: 17px !important; }
+.oauth-logo { position: absolute; left: 16px; width: 20px; height: 20px; }
+.facebook-logo { color: #1877f2; }
 .profile-dialog { text-align: center; }
 .profile-large-avatar { width: 64px; height: 64px; margin: 0 auto; border-radius: 50%; background: var(--ink); color: white; display: grid; place-items: center; font-size: 24px; font-weight: 700; }
 .profile-stats { margin: 24px 0 18px; padding: 15px; border: 1px solid #e1e4de; border-radius: 14px; display: grid; grid-template-columns: 1fr 1fr; }

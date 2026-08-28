@@ -4,6 +4,8 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
 import { ArrowLeft, Bookmark, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun, X } from 'lucide-react';
+import { FaFacebook } from 'react-icons/fa';
+import { FcGoogle } from 'react-icons/fc';
 import { useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '../../supabase';
 import type { Viewpoint } from '../../view-data';
@@ -46,8 +48,8 @@ function DetailAuth({ onClose }: { onClose: () => void }) {
         <h2>Keep this view with you.</h2>
         <p>Sign in to save it, mark it visited, or leave a practical tip.</p>
         <div className="oauth-actions">
-          <button type="button" onClick={() => void continueWith('google')}><span className="google-mark">G</span>Continue with Google</button>
-          <button type="button" onClick={() => void continueWith('facebook')}><span className="facebook-mark">f</span>Continue with Facebook</button>
+          <button type="button" onClick={() => void continueWith('google')}><FcGoogle className="oauth-logo" aria-hidden="true" />Continue with Google</button>
+          <button type="button" onClick={() => void continueWith('facebook')}><FaFacebook className="oauth-logo facebook-logo" aria-hidden="true" />Continue with Facebook</button>
         </div>
         {error && <p className="submit-error">{error}</p>}
       </section>

@@ -28,6 +28,8 @@ import {
   Waves,
   X,
 } from 'lucide-react';
+import { FaFacebook } from 'react-icons/fa';
+import { FcGoogle } from 'react-icons/fc';
 import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseBrowserClient } from './supabase';
 import type { Coordinates } from './maplibre-map';
@@ -268,8 +270,8 @@ function AuthDialog({ onClose }: { onClose: () => void }) {
         <h2>Keep your views with you.</h2>
         <p>Save places, remember where you have been, and share your own viewpoints.</p>
         <div className="oauth-actions">
-          <button type="button" onClick={() => void continueWith('google')}><span className="google-mark">G</span>Continue with Google</button>
-          <button type="button" onClick={() => void continueWith('facebook')}><span className="facebook-mark">f</span>Continue with Facebook</button>
+          <button type="button" onClick={() => void continueWith('google')}><FcGoogle className="oauth-logo" aria-hidden="true" />Continue with Google</button>
+          <button type="button" onClick={() => void continueWith('facebook')}><FaFacebook className="oauth-logo facebook-logo" aria-hidden="true" />Continue with Facebook</button>
         </div>
         {error && <p className="submit-error">{error}</p>}
       </section>
