@@ -35,6 +35,7 @@ function mapTips(data: Record<string, unknown>[] | null): Tip[] {
 
 export default function ViewDetail({ view }: { view: Viewpoint }) {
   const [user, setUser] = useState<User | null>(null);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [visited, setVisited] = useState(false);
   const [tips, setTips] = useState<Tip[]>([]);
@@ -52,7 +53,15 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
     const supabase = getSupabaseBrowserClient();
     const applyUser = (nextUser: User | null) => {
       setUser(nextUser);
-      if (!nextUser) { setSaved(false); setVisited(false); }
+      if (!nextUser) {
+        setSaved(false);
+        setVisited(false);
+        setProfileAvatar(null);
+      } else {
+        void supabase.from('profiles').select('avatar_url').eq('id', nextUser.id).maybeSingle().then(({ data }) => {
+          setProfileAvatar(typeof data?.avatar_url === 'string' ? data.avatar_url : null);
+        });
+      }
     };
     void supabase.auth.getUser().then(({ data }) => applyUser(data.user));
     const { data } = supabase.auth.onAuthStateChange((_event, session) => applyUser(session?.user ?? null));
@@ -99,7 +108,7 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
   };
 
   const directions = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(view.coordinates)}`;
-  const viewerAvatar = user && (user.user_metadata.avatar_url || user.user_metadata.picture);
+  const viewerAvatar = profileAvatar || (user && (user.user_metadata.avatar_url || user.user_metadata.picture));
   return (
     <main className="view-screen">
       <header className="view-screen-header site-topbar app-page-topbar">
@@ -127,7 +136,7 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
             <p><MapPin size={13} /> {view.region}, {view.country}</p>
             <h1>{view.title}</h1>
             {view.contributor && (
-              <Link className="view-contributor" href={`/profile/${view.contributor.id}`} aria-label={`View ${view.contributor.name}'s profile`}>
+              <Link className="view-contributor" href={`/profile/${view.contributor.username || view.contributor.id}`} aria-label={`View ${view.contributor.name}'s profile`}>
                 <span className={view.contributor.avatar ? 'has-image' : ''} style={view.contributor.avatar ? { backgroundImage: `url('${view.contributor.avatar}')` } : undefined}>
                   {!view.contributor.avatar && view.contributor.name.charAt(0).toUpperCase()}
                 </span>

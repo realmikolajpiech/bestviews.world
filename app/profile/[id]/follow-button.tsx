@@ -6,10 +6,9 @@ import { useEffect, useState } from 'react';
 import AuthDialog from '../../auth-dialog';
 import { getSupabaseBrowserClient } from '../../supabase';
 
-export default function FollowButton({ profileId, initialFollowerCount }: { profileId: string; initialFollowerCount: number }) {
+export default function FollowButton({ profileId }: { profileId: string }) {
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
-  const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [loading, setLoading] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -42,7 +41,6 @@ export default function FollowButton({ profileId, initialFollowerCount }: { prof
 
     const next = !following;
     setFollowing(next);
-    setFollowerCount((count) => Math.max(0, count + (next ? 1 : -1)));
     setLoading(true);
     const supabase = getSupabaseBrowserClient();
     const { error } = next
@@ -50,14 +48,12 @@ export default function FollowButton({ profileId, initialFollowerCount }: { prof
       : await supabase.from('follows').delete().eq('follower_id', viewerId).eq('following_id', profileId);
     if (error) {
       setFollowing(!next);
-      setFollowerCount((count) => Math.max(0, count + (next ? -1 : 1)));
     }
     setLoading(false);
   };
 
   return (
     <div className="public-profile-action">
-      <span><strong>{followerCount}</strong> {followerCount === 1 ? 'follower' : 'followers'}</span>
       {viewerId === profileId ? (
         <Link href="/profile">Edit profile</Link>
       ) : (

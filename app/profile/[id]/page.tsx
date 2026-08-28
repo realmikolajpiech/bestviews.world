@@ -1,18 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ExternalLink, MapPin, Plus, Search, UserRound } from 'lucide-react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '../../supabase';
 import HeaderProfileLink from '../../header-profile-link';
 import AppNavigation from '../../app-navigation';
 import { rowToViewpoint, type Viewpoint, type ViewpointRow } from '../../view-data';
 import SiteBrand from '../../site-brand';
 import FollowButton from './follow-button';
+import OwnProfileRedirect from './own-profile-redirect';
 
-const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, display_name, avatar_url)';
+const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, username, display_name, avatar_url)';
 
 type PublicProfile = {
   id: string;
+  username: string;
   display_name: string;
   avatar_url: string | null;
   bio: string | null;
@@ -20,19 +22,23 @@ type PublicProfile = {
   social_url: string | null;
 };
 
-async function getPublicProfile(id: string) {
+async function getPublicProfile(handle: string) {
   try {
     const supabase = createSupabaseServerClient();
-    const [profileResult, viewpointsResult, followersResult, followingResult] = await Promise.all([
-      supabase.from('profiles').select('id, display_name, avatar_url, bio, location, social_url').eq('id', id).maybeSingle(),
-      supabase.from('viewpoints').select(viewpointSelect).eq('contributor_id', id).eq('status', 'published').order('created_at', { ascending: false }),
-      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', id),
-      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', id),
-    ]);
-
+    const normalizedHandle = handle.toLowerCase();
+    let profileResult = await supabase.from('profiles').select('id, username, display_name, avatar_url, bio, location, social_url').eq('username', normalizedHandle).maybeSingle();
+    if (!profileResult.data && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(handle)) {
+      profileResult = await supabase.from('profiles').select('id, username, display_name, avatar_url, bio, location, social_url').eq('id', handle).maybeSingle();
+    }
     if (profileResult.error || !profileResult.data) return null;
+    const profile = profileResult.data as PublicProfile;
+    const [viewpointsResult, followersResult, followingResult] = await Promise.all([
+      supabase.from('viewpoints').select(viewpointSelect).eq('contributor_id', profile.id).eq('status', 'published').order('created_at', { ascending: false }),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
+    ]);
     return {
-      profile: profileResult.data as PublicProfile,
+      profile,
       viewpoints: (viewpointsResult.data || []).map((row) => rowToViewpoint(row as ViewpointRow)).filter((view) => view.image),
       followerCount: followersResult.count || 0,
       followingCount: followingResult.count || 0,
@@ -55,8 +61,8 @@ function ViewCard({ view }: { view: Viewpoint }) {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params;
-  const result = await getPublicProfile(id);
+  const { id: handle } = await params;
+  const result = await getPublicProfile(handle);
   if (!result) return { title: 'Profile — BestViews.world' };
   return {
     title: `${result.profile.display_name}'s views — BestViews.world`,
@@ -65,11 +71,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const result = await getPublicProfile(id);
+  const { id: handle } = await params;
+  const result = await getPublicProfile(handle);
   if (!result) notFound();
 
   const { profile, viewpoints, followerCount, followingCount } = result;
+  if (handle !== profile.username) redirect(`/profile/${profile.username}`);
   const firstName = profile.display_name.split(/\s+/)[0];
   const socialLabel = profile.social_url ? (() => {
     try { return new URL(profile.social_url).hostname.replace(/^www\./, ''); } catch { return 'Social link'; }
@@ -77,6 +84,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="profile-page">
+      <OwnProfileRedirect profileId={profile.id} />
       <header className="profile-topbar site-topbar app-page-topbar">
         <SiteBrand />
         <AppNavigation />
@@ -96,17 +104,19 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
           </div>
           <div className="profile-intro">
             <div className="profile-name-line"><h1>{profile.display_name}</h1></div>
+            <p className="profile-handle">@{profile.username}</p>
             {profile.bio && <p className="profile-bio">{profile.bio}</p>}
             <div className="profile-meta">
               {profile.location && <span><MapPin size={14} /> {profile.location}</span>}
               {profile.social_url && <a href={profile.social_url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> {socialLabel}</a>}
             </div>
             <div className="profile-social-stats">
-              <span><strong>{viewpoints.length}</strong><small>Shared</small></span>
+              <span><strong>{followerCount}</strong><small>{followerCount === 1 ? 'Follower' : 'Followers'}</small></span>
               <span><strong>{followingCount}</strong><small>Following</small></span>
+              <span><strong>{viewpoints.length}</strong><small>Shared</small></span>
             </div>
           </div>
-          <FollowButton profileId={profile.id} initialFollowerCount={followerCount} />
+          <FollowButton profileId={profile.id} />
         </section>
 
         {viewpoints.length ? (

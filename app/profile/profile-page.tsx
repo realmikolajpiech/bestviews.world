@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { Camera, Check, ExternalLink, Heart, LoaderCircle, MapPin, Pencil, Plus, Search, UserRound } from 'lucide-react';
+import { AtSign, Camera, Check, ExternalLink, Heart, LoaderCircle, MapPin, Pencil, Plus, Search, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import AuthDialog from '../auth-dialog';
 import AppNavigation from '../app-navigation';
@@ -13,10 +13,11 @@ import { getSupabaseBrowserClient } from '../supabase';
 import { rowToViewpoint, type Viewpoint, type ViewpointRow } from '../view-data';
 
 const ProfileMap = dynamic(() => import('../maplibre-map').then((module) => module.ExploreMap), { ssr: false });
-const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, display_name, avatar_url)';
+const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, username, display_name, avatar_url)';
 
 type ProfileRecord = {
   display_name: string;
+  username: string;
   avatar_url: string | null;
   bio: string | null;
   location: string | null;
@@ -75,6 +76,7 @@ export default function ProfilePage() {
   const [authOpen, setAuthOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [socialUrl, setSocialUrl] = useState('');
@@ -105,7 +107,7 @@ export default function ProfilePage() {
 
       setLoading(true);
       const [profileResult, savesResult, visitsResult, sharedResult, followersResult, followingResult] = await Promise.all([
-        supabase.from('profiles').select('display_name, avatar_url, bio, location, social_url').eq('id', nextUser.id).maybeSingle(),
+        supabase.from('profiles').select('display_name, username, avatar_url, bio, location, social_url').eq('id', nextUser.id).maybeSingle(),
         supabase.from('saves').select('viewpoint_id, created_at').eq('user_id', nextUser.id).order('created_at', { ascending: false }),
         supabase.from('visits').select('viewpoint_id, visited_at').eq('user_id', nextUser.id).order('visited_at', { ascending: false }),
         supabase.from('viewpoints').select(viewpointSelect).eq('contributor_id', nextUser.id).order('created_at', { ascending: false }),
@@ -117,6 +119,7 @@ export default function ProfilePage() {
       const nextProfile = profileResult.data as ProfileRecord | null;
       setProfile(nextProfile);
       setName(nextProfile?.display_name || fallbackName(nextUser));
+      setUsername(nextProfile?.username || '');
       setBio(nextProfile?.bio || '');
       setLocation(nextProfile?.location || '');
       setSocialUrl(nextProfile?.social_url || '');
@@ -159,6 +162,7 @@ export default function ProfilePage() {
 
   const resetEditor = () => {
     setName(profile?.display_name || (user ? fallbackName(user) : ''));
+    setUsername(profile?.username || '');
     setBio(profile?.bio || '');
     setLocation(profile?.location || '');
     setSocialUrl(profile?.social_url || '');
@@ -170,6 +174,10 @@ export default function ProfilePage() {
     if (!user) return;
     const trimmed = name.trim();
     if (!trimmed) return setProfileError('Add the name you want people to see.');
+    const normalizedUsername = username.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(normalizedUsername)) {
+      return setProfileError('Use 3–30 lowercase letters, numbers, or hyphens for your username.');
+    }
     let normalizedSocialUrl: string | null = null;
     if (socialUrl.trim()) {
       try {
@@ -204,15 +212,19 @@ export default function ProfilePage() {
 
     const nextProfile: ProfileRecord = {
       display_name: trimmed,
+      username: normalizedUsername,
       avatar_url: nextAvatarUrl || null,
       bio: bio.trim() || null,
       location: location.trim() || null,
       social_url: normalizedSocialUrl,
     };
     const { error } = await supabase.from('profiles').update(nextProfile).eq('id', user.id);
-    if (!error) await supabase.auth.updateUser({ data: { full_name: trimmed } });
+    if (!error) {
+      await supabase.auth.updateUser({ data: { full_name: trimmed, username: normalizedUsername, avatar_url: nextAvatarUrl || null } });
+      window.dispatchEvent(new CustomEvent('profile-avatar-updated', { detail: nextAvatarUrl || null }));
+    }
     setSavingProfile(false);
-    if (error) setProfileError('Could not save your profile.');
+    if (error) setProfileError(error.code === '23505' ? 'That username is already taken.' : 'Could not save your profile.');
     else {
       setProfile(nextProfile);
       setSocialUrl(normalizedSocialUrl || '');
@@ -266,6 +278,7 @@ export default function ProfilePage() {
               {editing ? (
                 <div className="profile-inline-fields">
                   <input className="profile-inline-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={80} autoFocus aria-label="Display name" />
+                  <label className="profile-inline-username"><AtSign size={14} /><input value={username} onChange={(event) => setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} minLength={3} maxLength={30} placeholder="username" aria-label="Username" /></label>
                   <textarea className="profile-inline-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={240} rows={2} placeholder="Share a little about yourself and the views you chase." aria-label="Bio" />
                   <div className="profile-inline-meta">
                     <label><MapPin size={14} /><input value={location} onChange={(event) => setLocation(event.target.value)} maxLength={100} placeholder="Add location" aria-label="Location" /></label>
@@ -276,6 +289,7 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <div className="profile-name-line"><h1>{displayName}</h1></div>
+                  {profile?.username && <p className="profile-handle">@{profile.username}</p>}
                   {profile?.bio
                     ? <p className="profile-bio">{profile.bio}</p>
                     : <button className="profile-add-bio" type="button" onClick={() => { resetEditor(); setEditing(true); }}>+ Add a bio</button>}

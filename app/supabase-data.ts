@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from './supabase';
 import { rowToViewpoint, type Viewpoint, type ViewpointRow } from './view-data';
 
-const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, display_name, avatar_url)';
+const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, username, display_name, avatar_url)';
 
 export async function getPublishedViewpoints(): Promise<Viewpoint[]> {
   try {

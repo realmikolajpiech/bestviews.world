@@ -37,7 +37,7 @@ import { categories, rowToViewpoint, type ViewCategory, type Viewpoint, type Vie
 
 const ExploreMap = dynamic(() => import('./maplibre-map').then((module) => module.ExploreMap), { ssr: false });
 const LocationPickerMap = dynamic(() => import('./maplibre-map').then((module) => module.LocationPickerMap), { ssr: false });
-const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, display_name, avatar_url)';
+const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, username, display_name, avatar_url)';
 
 async function fetchPublishedViewpoint(id: string) {
   const { data, error } = await getSupabaseBrowserClient()
@@ -110,7 +110,7 @@ function MomentCard({ view, saved, onSave }: { view: Viewpoint; saved: boolean; 
     <article className="moment-card" style={{ backgroundImage: `url('${view.image}')` }}>
       <Link className="card-link" href={`/views/${view.slug}`} aria-label={`Open ${view.title}`} />
       {view.contributor && (
-        <Link className="moment-person" href={`/profile/${view.contributor.id}`} aria-label={`View ${view.contributor.name}'s profile`}>
+        <Link className="moment-person" href={`/profile/${view.contributor.username || view.contributor.id}`} aria-label={`View ${view.contributor.name}'s profile`}>
           <PersonAvatar name={view.contributor.name} image={view.contributor.avatar} />
           <strong>{view.contributor.name}</strong>
         </Link>
@@ -755,6 +755,7 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
   const [category, setCategory] = useState<string>('For you');
   const [viewpoints, setViewpoints] = useState(initialViewpoints);
   const [user, setUser] = useState<User | null>(null);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [searchOpen, setSearchOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -789,7 +790,14 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
     const supabase = getSupabaseBrowserClient();
     const applyUser = (nextUser: User | null) => {
       setUser(nextUser);
-      if (!nextUser) setSaved(new Set());
+      if (!nextUser) {
+        setSaved(new Set());
+        setProfileAvatar(null);
+      } else {
+        void supabase.from('profiles').select('avatar_url').eq('id', nextUser.id).maybeSingle().then(({ data }) => {
+          setProfileAvatar(typeof data?.avatar_url === 'string' ? data.avatar_url : null);
+        });
+      }
       const search = new URLSearchParams(window.location.search);
       const requestedSurface = search.get('surface');
       const wantsShare = search.get('share') === '1';
@@ -824,9 +832,14 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
 
       if (consumedRequest) window.history.replaceState({}, '', window.location.pathname);
     };
+    const handleAvatarUpdate = (event: Event) => setProfileAvatar((event as CustomEvent<string | null>).detail);
     void supabase.auth.getUser().then(({ data }) => applyUser(data.user));
     const { data } = supabase.auth.onAuthStateChange((_event, session) => applyUser(session?.user ?? null));
-    return () => data.subscription.unsubscribe();
+    window.addEventListener('profile-avatar-updated', handleAvatarUpdate);
+    return () => {
+      data.subscription.unsubscribe();
+      window.removeEventListener('profile-avatar-updated', handleAvatarUpdate);
+    };
   }, []);
 
   useEffect(() => {
@@ -868,8 +881,8 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
             <button className="share-view-top" type="button" onClick={openSubmit}><Plus size={15} /><span>Share a view</span></button>
             {user ? (
               <Link className="avatar" href="/profile" aria-label="Open profile">
-                {userAvatarUrl(user)
-                  ? <img src={userAvatarUrl(user) || ''} alt="" />
+              {profileAvatar || userAvatarUrl(user)
+                ? <img src={profileAvatar || userAvatarUrl(user) || ''} alt="" />
                   : (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}
               </Link>
             ) : <button className="avatar" type="button" aria-label="Sign in" onClick={() => setAuthOpen(true)}><UserRound size={18} strokeWidth={1.8} /></button>}

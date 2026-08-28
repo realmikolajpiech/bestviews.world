@@ -3,7 +3,7 @@ import { publicPhotoUrl } from './supabase';
 export const categories = ['For you', 'Sunsets', 'Mountains', 'City lights', 'Coastlines', 'Hidden gems'] as const;
 export type ViewCategory = Exclude<(typeof categories)[number], 'For you'>;
 
-export type Contributor = { id: string; name: string; avatar: string | null };
+export type Contributor = { id: string; username: string | null; name: string; avatar: string | null };
 
 export type Viewpoint = {
   id: string;
@@ -49,7 +49,7 @@ export function rowToViewpoint(row: ViewpointRow): Viewpoint {
   const profileValue = row.profiles;
   const profile = Array.isArray(profileValue) ? profileValue[0] : profileValue;
   const contributor = profile && typeof profile === 'object'
-    ? profile as { id?: string; display_name?: string; avatar_url?: string | null }
+    ? profile as { id?: string; username?: string | null; display_name?: string; avatar_url?: string | null }
     : null;
   const image = publicPhotoUrl(row.cover_photo_path) ?? '';
   return {
@@ -74,6 +74,7 @@ export function rowToViewpoint(row: ViewpointRow): Viewpoint {
     thumb: image,
     contributor: contributor?.id ? {
       id: contributor.id,
+      username: contributor.username || null,
       name: contributor.display_name || 'Community member',
       avatar: contributor.avatar_url || null,
     } : null,
