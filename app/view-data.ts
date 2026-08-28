@@ -18,7 +18,6 @@ export type Viewpoint = {
   difficulty: string | null;
   cost: string | null;
   accessSummary: string | null;
-  lookDirection: string;
   coordinates: string;
   latitude: number;
   longitude: number;
@@ -38,7 +37,6 @@ export type ViewpointRow = Record<string, unknown> & {
   country: string;
   latitude: number;
   longitude: number;
-  look_direction: string;
   category: ViewCategory;
   cover_photo_path: string | null;
   created_at: string;
@@ -64,7 +62,6 @@ export function rowToViewpoint(row: ViewpointRow): Viewpoint {
     difficulty: row.difficulty ? String(row.difficulty) : null,
     cost: row.cost ? String(row.cost) : null,
     accessSummary: row.access_summary ? String(row.access_summary) : null,
-    lookDirection: row.look_direction,
     coordinates: `${Number(row.latitude).toFixed(6)}, ${Number(row.longitude).toFixed(6)}`,
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),

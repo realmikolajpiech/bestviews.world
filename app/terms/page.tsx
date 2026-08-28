@@ -42,7 +42,7 @@ export default function TermsPage() {
 
         <section>
           <h2>What you may contribute</h2>
-          <p>You may submit viewpoints, exact coordinates, directions to look, photos, captions, tips, collections, and other community content. Only submit material you have the right to share. Photos should honestly represent the view and must not impersonate another person, mislead visitors, or conceal sponsorship.</p>
+          <p>You may submit viewpoints, exact coordinates, photos, captions, tips, collections, and other community content. Only submit material you have the right to share. Photos should honestly represent the view and must not impersonate another person, mislead visitors, or conceal sponsorship.</p>
           <p>You remain responsible for your contributions and for any people, private property, personal information, or intellectual property shown in them.</p>
         </section>
 

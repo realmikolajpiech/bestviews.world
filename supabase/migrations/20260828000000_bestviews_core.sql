@@ -19,7 +19,7 @@ create table public.viewpoints (
   country text not null check (char_length(country) between 1 and 100),
   latitude double precision not null check (latitude between -90 and 90),
   longitude double precision not null check (longitude between -180 and 180),
-  look_direction text not null check (char_length(look_direction) between 3 and 180),
+  look_direction text check (look_direction is null or char_length(look_direction) between 3 and 180),
   category text not null check (category in ('Sunsets', 'Mountains', 'City lights', 'Coastlines', 'Hidden gems')),
   best_time text,
   best_season text,

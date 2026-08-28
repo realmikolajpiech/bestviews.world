@@ -113,7 +113,6 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
           <section className="stand-panel">
             <div className="stand-panel-head"><h2>Stand here</h2></div>
             <div className="stand-mini-map"><ViewpointMap coordinate={{ latitude: view.latitude, longitude: view.longitude }} ariaLabel={`Exact viewpoint for ${view.title}`} /><small>{view.coordinates}</small></div>
-            <div className="stand-instruction"><Compass size={16} /><span><small>Look this way</small><strong>{view.lookDirection}</strong></span></div>
           </section>
 
           <section className="view-facts">

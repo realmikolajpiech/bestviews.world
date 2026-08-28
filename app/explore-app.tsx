@@ -14,7 +14,6 @@ import {
   Eye,
   Gem,
   Heart,
-  LocateFixed,
   Map as MapIcon,
   MapPin,
   Mountain,
@@ -23,7 +22,6 @@ import {
   Search,
   Sparkles,
   Sunset,
-  Upload,
   UserRound,
   Waves,
   X,
@@ -286,38 +284,53 @@ function makeSlug(title: string) {
 
 function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => void; onDone: (title: string) => void }) {
   const { closing, requestClose, closeThen } = useAnimatedModalClose(onClose);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [title, setTitle] = useState('');
   const [region, setRegion] = useState('');
   const [country, setCountry] = useState('');
-  const [lookDirection, setLookDirection] = useState('');
   const [access, setAccess] = useState('');
   const [bestTime, setBestTime] = useState('');
   const [category, setCategory] = useState<ViewCategory>('Hidden gems');
   const [coordinate, setCoordinate] = useState<Coordinates | null>(null);
   const [coordinateText, setCoordinateText] = useState('');
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
-  const [gpsCandidate, setGpsCandidate] = useState<Coordinates | null>(null);
-  const [photoMessage, setPhotoMessage] = useState('JPG, PNG or WebP, up to 8 MB');
+  const [photoMessage, setPhotoMessage] = useState('Choose one you took there');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const photoPreview = useMemo(() => photo ? URL.createObjectURL(photo) : null, [photo]);
+
+  useEffect(() => () => { if (photoPreview) URL.revokeObjectURL(photoPreview); }, [photoPreview]);
 
   const updateCoordinate = (next: Coordinates) => { setCoordinate(next); setCoordinateText(formatCoordinates(next)); setError(null); };
   const handlePhoto = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) return setError('Photo must be under 8 MB.');
-    setPhoto(file); setGpsCandidate(null); setError(null); setPhotoMessage('Checking the photo for GPS…');
+    setPhoto(file); setError(null); setPhotoMessage('Looking for its location…');
     try {
       const { gps } = await import('exifr');
       const location = await gps(file) as Coordinates | undefined;
-      if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) { setGpsCandidate(location); setPhotoMessage('GPS location found in this photo'); }
-      else setPhotoMessage('No GPS found — drop a pin on the map');
-    } catch { setPhotoMessage('No readable GPS found — drop a pin on the map'); }
+      if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) {
+        updateCoordinate(location);
+        setPhotoMessage('Location found — check it on the next step');
+      } else setPhotoMessage('Photo ready');
+    } catch { setPhotoMessage('Photo ready'); }
+  };
+
+  const continueFlow = () => {
+    setError(null);
+    if (step === 1) {
+      if (!photo) return setError('Choose a photo you took there.');
+      return setStep(2);
+    }
+    const parsed = coordinate ?? parseCoordinates(coordinateText);
+    if (!region.trim() || !country.trim() || !parsed) return setError('Add the place and mark the exact spot.');
+    updateCoordinate(parsed);
+    setStep(3);
   };
 
   const submit = async () => {
     const parsed = coordinate ?? parseCoordinates(coordinateText);
-    if (!title.trim() || !region.trim() || !country.trim() || !lookDirection.trim() || !parsed || !photo) return setError('Add the name, place, direction, exact pin, and your photo.');
+    if (!title.trim() || !region.trim() || !country.trim() || !parsed || !photo) return setError('Give this view a name.');
     setSubmitting(true); setError(null);
     const supabase = getSupabaseBrowserClient();
     const extension = photo.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
@@ -327,8 +340,8 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     const { error: insertError } = await supabase.from('viewpoints').insert({
       slug: makeSlug(title), contributor_id: user.id, title: title.trim(), short_title: title.trim(),
       region: region.trim(), country: country.trim(), latitude: parsed.latitude, longitude: parsed.longitude,
-      look_direction: lookDirection.trim(), category, best_time: bestTime.trim() || null,
-      access_summary: access.trim() || null, cover_photo_path: storagePath, status: 'pending',
+      look_direction: 'View from the marked spot', category, best_time: bestTime.trim() || null, access_summary: access.trim() || null,
+      cover_photo_path: storagePath, status: 'pending',
     });
     setSubmitting(false);
     if (insertError) { await supabase.storage.from('viewpoint-photos').remove([storagePath]); return setError(insertError.message); }
@@ -339,25 +352,51 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
       <section className="submit-dialog" role="dialog" aria-modal="true" aria-label="Share a viewpoint" onMouseDown={(event) => event.stopPropagation()}>
         <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
-        <h2>Share a view</h2><p>Show someone exactly where to stand and where to look.</p>
-        <div className="submission-grid">
-          <label>Viewpoint name<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="The name people will remember" /></label>
-          <label>Category<select value={category} onChange={(event) => setCategory(event.target.value as ViewCategory)}>{categories.slice(1).map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label>Region or city<input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="South Tyrol" /></label>
-          <label>Country<input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="Italy" /></label>
+        <div className="share-flow-head"><span>Share a view</span><small>{step} of 3</small></div>
+        <div className="share-progress" aria-hidden="true">{[1, 2, 3].map((item) => <i className={item <= step ? 'active' : ''} key={item} />)}</div>
+
+        {step === 1 && <div className="share-step share-photo-step">
+          <h2>Start with the view.</h2>
+          <p>Pick the photo that made you stop.</p>
+          <label className={`share-photo-stage ${photoPreview ? 'has-photo' : ''}`} htmlFor="viewpoint-photo" style={photoPreview ? { backgroundImage: `url('${photoPreview}')` } : undefined}>
+            <span><Camera size={24} /><strong>{photo ? 'Choose another photo' : 'Choose a photo'}</strong><small>{photoMessage}</small></span>
+          </label>
+          <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void handlePhoto(event.target.files?.[0])} />
+        </div>}
+
+        {step === 2 && <div className="share-step share-place-step">
+          <h2>Where were you standing?</h2>
+          <p>Tap the map as precisely as you can.</p>
+          <LocationPickerMap coordinate={coordinate} onChange={updateCoordinate} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
+          <div className="share-place-fields">
+            <label>City or region<input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="South Tyrol" autoFocus /></label>
+            <label>Country<input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="Italy" /></label>
+          </div>
+          <div className="share-coordinates"><MapPin size={15} /><input value={coordinateText} onChange={(event) => { setCoordinateText(event.target.value); setCoordinate(parseCoordinates(event.target.value)); }} placeholder="Or paste latitude, longitude" inputMode="decimal" /></div>
+        </div>}
+
+        {step === 3 && <div className="share-step share-details-step">
+          <h2>What do you call it?</h2>
+          <p>Just enough for someone else to find it.</p>
+          <label className="share-name-field">Name<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Seceda ridgeline" autoFocus /></label>
+          <fieldset className="share-category"><legend>It feels like</legend><div>{categories.slice(1).map((item) => {
+            const Icon = categoryIcons[item];
+            return <button className={category === item ? 'active' : ''} type="button" key={item} onClick={() => setCategory(item as ViewCategory)}><Icon size={15} /> {item}</button>;
+          })}</div></fieldset>
+          <div className="share-optional-fields">
+            <label>Getting there <span>optional</span><input value={access} onChange={(event) => setAccess(event.target.value)} placeholder="Short walk from the cable car" /></label>
+            <label>Best moment <span>optional</span><input value={bestTime} onChange={(event) => setBestTime(event.target.value)} placeholder="Early morning" /></label>
+          </div>
+        </div>}
+
+        <div className="share-flow-footer">
+          <span>{error && <small className="submit-error" role="alert">{error}</small>}</span>
+          <div>{step > 1 && <button className="share-back" type="button" onClick={() => { setError(null); setStep((step - 1) as 1 | 2); }}>Back</button>}
+            {step < 3
+              ? <button className="share-next" type="button" onClick={continueFlow}>Continue <ChevronRight size={16} /></button>
+              : <button className="share-next" type="button" onClick={() => void submit()} disabled={submitting}>{submitting ? 'Sharing…' : 'Share this view'} <ChevronRight size={16} /></button>}
+          </div>
         </div>
-        <label>Direction to look<input value={lookDirection} onChange={(event) => setLookDirection(event.target.value)} placeholder="Face east toward the Odle peaks" /></label>
-        <div className="submission-grid">
-          <label>Starting point and access<input value={access} onChange={(event) => setAccess(event.target.value)} placeholder="22 min from the upper cable-car station" /></label>
-          <label>Best time <span>optional</span><input value={bestTime} onChange={(event) => setBestTime(event.target.value)} placeholder="Around sunrise" /></label>
-        </div>
-        <label>Exact standing point<div className="location-input"><MapPin size={16} /><input value={coordinateText} onChange={(event) => { setCoordinateText(event.target.value); setCoordinate(parseCoordinates(event.target.value)); }} placeholder="Latitude, longitude" inputMode="decimal" /><button type="button" onClick={() => setPickerOpen((open) => !open)}>{pickerOpen ? 'Hide map' : 'Drop a pin'}</button></div></label>
-        {pickerOpen && <LocationPickerMap coordinate={coordinate} onChange={updateCoordinate} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />}
-        <label htmlFor="viewpoint-photo">Your photo<div className={`upload-field ${photo ? 'has-photo' : ''}`}><Upload size={20} /><span><strong>{photo?.name || 'Choose a photo you took there'}</strong><small>{photoMessage}</small></span></div></label>
-        <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void handlePhoto(event.target.files?.[0])} />
-        {gpsCandidate && <div className="gps-found"><span><LocateFixed size={16} /><b>Photo location found</b><small>{formatCoordinates(gpsCandidate)}</small></span><button type="button" onClick={() => { updateCoordinate(gpsCandidate); setPickerOpen(true); setGpsCandidate(null); }}>Use location</button></div>}
-        {error && <p className="submit-error" role="alert">{error}</p>}
-        <button className="primary-submit" type="button" onClick={() => void submit()} disabled={submitting}>{submitting ? 'Submitting…' : 'Submit for review'} <ChevronRight size={15} /></button>
       </section>
     </div>
   );
@@ -445,7 +484,7 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
       {searchOpen && <SearchDialog viewpoints={initialViewpoints} onClose={() => setSearchOpen(false)} />}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
       {profileOpen && user && <ProfileDialog user={user} savedCount={saved.size} visitedCount={visited.size} submissions={submissions} onClose={() => setProfileOpen(false)} />}
-      {submitOpen && user && <SubmitDialog user={user} onClose={() => setSubmitOpen(false)} onDone={(title) => { setSubmissions((current) => [{ title, status: 'pending' }, ...current]); setSubmitOpen(false); showToast('Submitted for community review'); }} />}
+      {submitOpen && user && <SubmitDialog user={user} onClose={() => setSubmitOpen(false)} onDone={(title) => { setSubmissions((current) => [{ title, status: 'pending' }, ...current]); setSubmitOpen(false); showToast('Thanks — we’ll check the pin, then share it'); }} />}
       {toast && <div className="toast" role="status"><Check size={15} /> {toast}</div>}
       <button className="mobile-add" type="button" aria-label="Add viewpoint" onClick={openSubmit}><Camera size={19} /></button>
     </main>

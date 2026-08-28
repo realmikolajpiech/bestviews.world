@@ -12,7 +12,6 @@ type PendingView = {
   country: string;
   latitude: number;
   longitude: number;
-  look_direction: string;
   cover_photo_path: string | null;
 };
 
@@ -28,7 +27,7 @@ export default function ModerationPage() {
       const canModerate = profile?.role === 'moderator' || profile?.role === 'admin';
       setAuthorized(canModerate);
       if (!canModerate) return;
-      const { data: pending } = await supabase.from('viewpoints').select('id,title,region,country,latitude,longitude,look_direction,cover_photo_path').eq('status', 'pending').order('created_at');
+      const { data: pending } = await supabase.from('viewpoints').select('id,title,region,country,latitude,longitude,cover_photo_path').eq('status', 'pending').order('created_at');
       setViews((pending || []) as PendingView[]);
     });
   }, []);
@@ -49,7 +48,7 @@ export default function ModerationPage() {
         {views.map((view) => (
           <article key={view.id}>
             <span className="moderation-photo" style={{ backgroundImage: `url('${publicPhotoUrl(view.cover_photo_path) || ''}')` }} />
-            <div><h2>{view.title}</h2><p><MapPin size={12} /> {view.region}, {view.country}</p><small>{view.latitude.toFixed(6)}, {view.longitude.toFixed(6)}</small><strong>{view.look_direction}</strong></div>
+            <div><h2>{view.title}</h2><p><MapPin size={12} /> {view.region}, {view.country}</p><small>{view.latitude.toFixed(6)}, {view.longitude.toFixed(6)}</small></div>
             <nav><button type="button" onClick={() => void decide(view.id, 'published')}><Check size={15} /> Publish</button><button type="button" onClick={() => void decide(view.id, 'rejected')}><X size={15} /> Reject</button></nav>
           </article>
         ))}
