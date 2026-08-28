@@ -144,8 +144,8 @@ function ExploreSurface({
       ) : (
         <div className="honest-empty">
           <span><Compass size={25} /></span>
-          <h2>{category === 'For you' ? 'The first view starts with someone sharing it.' : `No ${category.toLowerCase()} shared yet.`}</h2>
-          <p>Know one worth standing still for?</p>
+          <h2>{category === 'For you' ? 'The first view starts with you.' : `No ${category.toLowerCase()} here yet.`}</h2>
+          <p>{category === 'For you' ? 'Share a place you still think about.' : 'Know one that belongs here?'}</p>
           <button type="button" onClick={onAdd}>Share a view <Plus size={15} /></button>
         </div>
       )}
@@ -474,7 +474,7 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
           <button className={`rail-item ${surface === 'map' ? 'active' : ''}`} type="button" onClick={() => navigate('map')}><MapIcon /><small>Map</small></button>
           <button className={`rail-item ${surface === 'saved' ? 'active' : ''}`} type="button" onClick={() => requireUser(() => navigate('saved'))}><Bookmark fill={surface === 'saved' ? 'currentColor' : 'none'} /><small>Saved</small></button>
         </div>
-        <button className="rail-item add-item" type="button" onClick={openSubmit}><Plus /><small>Add view</small></button>
+        <button className="rail-item add-item" type="button" onClick={openSubmit}><Camera /><small>Share</small></button>
       </aside>
 
       {surface === 'explore' && <ExploreSurface viewpoints={initialViewpoints} category={category} setCategory={setCategory} saved={saved} toggleSaved={toggleSaved} onAdd={openSubmit} />}
@@ -486,7 +486,6 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
       {profileOpen && user && <ProfileDialog user={user} savedCount={saved.size} visitedCount={visited.size} submissions={submissions} onClose={() => setProfileOpen(false)} />}
       {submitOpen && user && <SubmitDialog user={user} onClose={() => setSubmitOpen(false)} onDone={(title) => { setSubmissions((current) => [{ title, status: 'pending' }, ...current]); setSubmitOpen(false); showToast('Thanks — we’ll check the pin, then share it'); }} />}
       {toast && <div className="toast" role="status"><Check size={15} /> {toast}</div>}
-      <button className="mobile-add" type="button" aria-label="Add viewpoint" onClick={openSubmit}><Camera size={19} /></button>
     </main>
   );
 }
