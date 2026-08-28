@@ -425,7 +425,7 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
         <div className="topbar-center"><button className="search" type="button" aria-label="Search destinations" onClick={() => setSearchOpen(true)}><Search size={17} /><span>Search places and views</span></button></div>
         <nav className="header-actions" aria-label="Primary navigation">
           <button className="share-view-top" type="button" onClick={openSubmit}><Plus size={15} /><span>Share a view</span></button>
-          <button className="avatar" type="button" aria-label={user ? 'Open profile' : 'Sign in'} onClick={() => user ? setProfileOpen(true) : setAuthOpen(true)}>{user ? (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase() : <UserRound size={16} />}</button>
+          <button className="avatar" type="button" aria-label={user ? 'Open profile' : 'Sign in'} onClick={() => user ? setProfileOpen(true) : setAuthOpen(true)}>{user ? (user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase() : <UserRound size={18} strokeWidth={1.8} />}</button>
         </nav>
       </header>
 
