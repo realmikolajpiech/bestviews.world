@@ -856,7 +856,9 @@ a { text-decoration: none; }
 .legal-page { min-height: 100vh; padding: 0 22px 80px; background: #f5f6f2; }
 .legal-nav { width: min(860px,100%); height: 78px; margin: 0 auto; border-bottom: 1px solid #dfe3dc; display: flex; align-items: center; justify-content: space-between; }
 .legal-nav a { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 680; }
-.legal-nav > span { color: #7a827b; font-size: 12px; }
+.legal-nav-links { display: flex; align-items: center; gap: 18px; }
+.legal-nav-links a, .legal-nav-links span { color: #7a827b; font-size: 12px; font-weight: 560; }
+.legal-nav-links span[aria-current='page'] { color: var(--ink); font-weight: 680; }
 .legal-document { width: min(760px,100%); margin: 0 auto; }
 .legal-hero { padding: 76px 0 46px; border-bottom: 1px solid #dfe3dc; }
 .legal-hero > svg { width: 48px; height: 48px; padding: 12px; border-radius: 15px; background: var(--lime); }

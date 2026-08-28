@@ -13,7 +13,7 @@ export default function PrivacyPage() {
     <main className="legal-page">
       <nav className="legal-nav" aria-label="Privacy page navigation">
         <Link href="/"><ArrowLeft size={17} /> BestViews.world</Link>
-        <span>Privacy</span>
+        <div className="legal-nav-links"><span aria-current="page">Privacy</span><Link href="/terms">Terms</Link></div>
       </nav>
 
       <article className="legal-document">
