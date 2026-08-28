@@ -31,10 +31,23 @@ import AuthDialog from './auth-dialog';
 import { getSupabaseBrowserClient } from './supabase';
 import type { Coordinates } from './maplibre-map';
 import { preparePhotoForUpload, readPhotoCaptureTime, readPhotoLocation } from './photo-location';
-import { categories, type ViewCategory, type Viewpoint } from './view-data';
+import { categories, rowToViewpoint, type ViewCategory, type Viewpoint, type ViewpointRow } from './view-data';
 
 const ExploreMap = dynamic(() => import('./maplibre-map').then((module) => module.ExploreMap), { ssr: false });
 const LocationPickerMap = dynamic(() => import('./maplibre-map').then((module) => module.LocationPickerMap), { ssr: false });
+const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, display_name, avatar_url)';
+
+async function fetchPublishedViewpoint(id: string) {
+  const { data, error } = await getSupabaseBrowserClient()
+    .from('viewpoints')
+    .select(viewpointSelect)
+    .eq('id', id)
+    .eq('status', 'published')
+    .maybeSingle();
+  if (error || !data) return null;
+  const viewpoint = rowToViewpoint(data as ViewpointRow);
+  return viewpoint.image ? viewpoint : null;
+}
 
 type Surface = 'explore' | 'map' | 'saved';
 type PhotoLocationState = 'idle' | 'scanning' | 'found' | 'missing' | 'unreadable';
@@ -104,10 +117,10 @@ function MomentCard({ view, saved, onSave }: { view: Viewpoint; saved: boolean; 
     <article className="moment-card" style={{ backgroundImage: `url('${view.image}')` }}>
       <Link className="card-link" href={`/views/${view.slug}`} aria-label={`Open ${view.title}`} />
       {view.contributor && (
-        <div className="moment-person">
+        <Link className="moment-person" href={`/profile/${view.contributor.id}`} aria-label={`View ${view.contributor.name}'s profile`}>
           <PersonAvatar name={view.contributor.name} image={view.contributor.avatar} />
           <strong>{view.contributor.name}</strong>
-        </div>
+        </Link>
       )}
       <button className={`moment-save ${saved ? 'saved' : ''}`} type="button" onClick={onSave} aria-label={`${saved ? 'Remove' : 'Save'} ${view.title}`}>
         <Heart size={19} fill={saved ? 'currentColor' : 'none'} />
@@ -171,18 +184,13 @@ function ExploreSurface({
         </div>
       )}
 
-      {cards.length > 0 && (
-        <footer className="share-invitation clean-invitation">
-          <p><strong>Know a place that stays with you?</strong><span>Put the exact viewpoint on the map for someone else.</span></p>
-          <button type="button" onClick={onAdd}>Share a view <Plus size={15} /></button>
-        </footer>
-      )}
     </section>
   );
 }
 
 function MapSurface({ viewpoints, saved, toggleSaved }: { viewpoints: Viewpoint[]; saved: Set<string>; toggleSaved: (id: string) => void }) {
-  const [selected, setSelected] = useState<Viewpoint | null>(viewpoints[0] ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = viewpoints.find((view) => view.id === selectedId) ?? viewpoints[0] ?? null;
 
   const locateNearest = () => {
     if (!viewpoints.length) return;
@@ -192,7 +200,7 @@ function MapSurface({ viewpoints, saved, toggleSaved }: { viewpoints: Viewpoint[
         const closestDistance = ((closest.latitude - coords.latitude) ** 2) + ((closest.longitude - coords.longitude) ** 2);
         return distance < closestDistance ? view : closest;
       });
-      setSelected(nearest);
+      setSelectedId(nearest.id);
     });
   };
 
@@ -202,7 +210,7 @@ function MapSurface({ viewpoints, saved, toggleSaved }: { viewpoints: Viewpoint[
         <div className="map-list-head"><h1>Views around here</h1></div>
         <div className="map-results">
           {viewpoints.map((view) => (
-            <button className={`map-result ${selected?.id === view.id ? 'active' : ''}`} type="button" key={view.id} onClick={() => setSelected(view)}>
+            <button className={`map-result ${selected?.id === view.id ? 'active' : ''}`} type="button" key={view.id} onClick={() => setSelectedId(view.id)}>
               <span className="result-image" style={{ backgroundImage: `url('${view.thumb}')` }} />
               <span className="result-copy"><strong>{view.shortTitle}</strong><small>{view.region}, {view.country}</small></span>
               <Heart size={17} fill={saved.has(view.id) ? 'currentColor' : 'none'} onClick={(event) => { event.stopPropagation(); toggleSaved(view.id); }} />
@@ -213,7 +221,7 @@ function MapSurface({ viewpoints, saved, toggleSaved }: { viewpoints: Viewpoint[
       </div>
 
       <div className="visual-map">
-        {selected ? <ExploreMap viewpoints={viewpoints} selected={selected} onSelect={setSelected} ariaLabel="Interactive map of community viewpoints" /> : <div className="map-calm-empty"><MapIcon size={28} /><span>The map is waiting for its first view.</span></div>}
+        {selected ? <ExploreMap key={viewpoints.map((view) => view.id).join(':')} viewpoints={viewpoints} selected={selected} onSelect={(view) => setSelectedId(view.id)} ariaLabel="Interactive map of community viewpoints" /> : <div className="map-calm-empty"><MapIcon size={28} /><span>The map is waiting for its first view.</span></div>}
         {selected && (
           <>
             <div className="map-top-actions"><button className="map-near-me" type="button" onClick={locateNearest}><Navigation size={14} /> Near me</button></div>
@@ -305,7 +313,7 @@ function makeSlug(title: string) {
   return `${base}-${crypto.randomUUID().slice(0, 6)}`;
 }
 
-function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => void; onDone: (title: string) => void }) {
+function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => void; onDone: (viewpointId: string) => void }) {
   const { closing, requestClose, closeThen } = useAnimatedModalClose(onClose);
   const [mobileModeChoice] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches);
   const [shareMode, setShareMode] = useState<ShareMode | null>(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches ? null : 'past');
@@ -376,7 +384,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     setError(null);
   };
 
-  const lookupPlace = async (next: Coordinates, requestId: number) => {
+  const lookupPlace = async (next: Coordinates, requestId: number, replaceExisting = false) => {
     setPlaceLookupState('loading');
     try {
       const params = new URLSearchParams({ lat: String(next.latitude), lon: String(next.longitude) });
@@ -384,9 +392,9 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
       const place = await response.json() as { region?: string; country?: string };
       if (requestId !== placeLookupId.current) return;
       if (response.ok && place.region && place.country) {
-        setRegion((current) => current.trim() || place.region || '');
-        setCountry((current) => current.trim() || place.country || '');
-        setLocationQuery((current) => current.trim() || `${place.region}, ${place.country}`);
+        setRegion((current) => replaceExisting ? place.region || '' : current.trim() || place.region || '');
+        setCountry((current) => replaceExisting ? place.country || '' : current.trim() || place.country || '');
+        setLocationQuery((current) => replaceExisting ? `${place.region}, ${place.country}` : current.trim() || `${place.region}, ${place.country}`);
         setLocationSearchState('idle');
         setLocationSearchOpen(false);
         setPlaceLookupState('found');
@@ -467,6 +475,12 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     updateCoordinate({ latitude: suggestion.latitude, longitude: suggestion.longitude }, 'search');
   };
 
+  const chooseMapCoordinate = (next: Coordinates) => {
+    updateCoordinate(next, 'manual');
+    const placeRequestId = ++placeLookupId.current;
+    void lookupPlace(next, placeRequestId, true);
+  };
+
   const handlePhoto = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) return setError('Photo must be under 8 MB.');
@@ -541,15 +555,31 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     const storagePath = `${user.id}/${crypto.randomUUID()}.${preparedPhoto.extension}`;
     const { error: uploadError } = await supabase.storage.from('viewpoint-photos').upload(storagePath, preparedPhoto.blob, { contentType: preparedPhoto.contentType, upsert: false });
     if (uploadError) { setSubmitting(false); return setError(uploadError.message); }
-    const { error: insertError } = await supabase.from('viewpoints').insert({
-      slug: makeSlug(title), contributor_id: user.id, title: title.trim(), short_title: title.trim(),
+    const viewpointId = crypto.randomUUID();
+    const viewpointPayload: Record<string, string | number | null> = {
+      id: viewpointId, slug: makeSlug(title), contributor_id: user.id, title: title.trim(), short_title: title.trim(),
       region: region.trim(), country: country.trim(), latitude: parsed.latitude, longitude: parsed.longitude,
       look_direction: 'View from the marked spot', category, best_time: bestTime.trim() || null, access_summary: access.trim() || null,
-      cover_photo_path: storagePath, captured_at_local: capturedAtLocal, capture_timezone_offset: captureTimezoneOffset, capture_time_source: captureTimeSource, status: 'pending',
-    });
+      cover_photo_path: storagePath, captured_at_local: capturedAtLocal, capture_timezone_offset: captureTimezoneOffset, capture_time_source: captureTimeSource, status: 'published',
+    };
+    const optionalCaptureFields = ['capture_time_source', 'capture_timezone_offset', 'captured_at_local'] as const;
+    let insertError: { message: string } | null = null;
+    for (let attempt = 0; attempt <= optionalCaptureFields.length; attempt += 1) {
+      const { error: currentError } = await supabase.from('viewpoints').insert(viewpointPayload);
+      insertError = currentError;
+      if (!currentError) break;
+      const missingField = optionalCaptureFields.find((field) => currentError.message.includes(`'${field}'`) && currentError.message.includes('schema cache'));
+      if (!missingField) break;
+      delete viewpointPayload[missingField];
+    }
+    if (insertError) { setSubmitting(false); await supabase.storage.from('viewpoint-photos').remove([storagePath]); return setError(insertError.message); }
+    const visitedAt = (capturedAtLocal || localDateTimeValue(new Date())).slice(0, 10);
+    await supabase.from('visits').upsert(
+      { user_id: user.id, viewpoint_id: viewpointId, visited_at: visitedAt },
+      { onConflict: 'user_id,viewpoint_id', ignoreDuplicates: true },
+    );
     setSubmitting(false);
-    if (insertError) { await supabase.storage.from('viewpoint-photos').remove([storagePath]); return setError(insertError.message); }
-    closeThen(() => onDone(title.trim()));
+    closeThen(() => onDone(viewpointId));
   };
 
   const findingPlace = placeLookupState === 'loading' || locationSearchState === 'loading';
@@ -592,8 +622,11 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
         {shareMode && step === 1 && <div className={`share-step share-photo-step ${shareMode === 'now' ? 'share-now-photo-step' : ''}`}>
           <h2>Start with the view.</h2>
           <p>{shareMode === 'now' ? 'Take or choose the photo you are looking at.' : 'Pick the photo that made you stop.'}</p>
-          <label className={`share-photo-stage ${photoPreview ? 'has-photo' : ''}`} htmlFor="viewpoint-photo" style={photoPreview ? { backgroundImage: `url('${photoPreview}')` } : undefined}>
-            <span><Camera size={24} /><strong>{photo ? 'Choose another photo' : 'Choose a photo'}</strong><small>{photo ? 'From your device gallery' : 'JPEG, PNG, or WebP · up to 8 MB'}</small></span>
+          <label className={`share-photo-stage ${photoPreview ? 'has-photo' : ''}`} htmlFor="viewpoint-photo">
+            {photoPreview ? <>
+              <img src={photoPreview} alt="Selected view" />
+              <span className="share-photo-change"><Camera size={15} />Change</span>
+            </> : <span className="share-photo-empty"><Camera size={24} /><strong>Choose a photo</strong><small>JPEG, PNG, or WebP · up to 8 MB</small></span>}
           </label>
           <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handlePhoto(event.target.files?.[0]); event.currentTarget.value = ''; }} />
           {shareMode === 'now' && <div className="share-live-meta">
@@ -690,7 +723,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
               </div>
             </div>
           </div>
-          <LocationPickerMap coordinate={coordinate} onChange={(next) => updateCoordinate(next, 'manual')} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
+          <LocationPickerMap coordinate={coordinate} onChange={chooseMapCoordinate} ariaLabel="Choose the exact viewpoint on the map" className="location-picker-map" />
           <small className="place-search-attribution">Search data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · <a href="https://github.com/komoot/photon" target="_blank" rel="noreferrer">Photon</a></small>
         </div>}
 
@@ -727,12 +760,37 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
 export default function ExploreApp({ initialViewpoints }: { initialViewpoints: Viewpoint[] }) {
   const [surface, setSurface] = useState<Surface>('explore');
   const [category, setCategory] = useState<string>('For you');
+  const [viewpoints, setViewpoints] = useState(initialViewpoints);
   const [user, setUser] = useState<User | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [searchOpen, setSearchOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    const addOrUpdateViewpoint = async (id: string) => {
+      const viewpoint = await fetchPublishedViewpoint(id);
+      if (!viewpoint) return;
+      setViewpoints((current) => [viewpoint, ...current.filter((item) => item.id !== viewpoint.id)]);
+    };
+    const channel = supabase
+      .channel('published-viewpoints-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'viewpoints' }, (payload) => {
+        const next = payload.new && typeof payload.new === 'object' ? payload.new as Record<string, unknown> : {};
+        const previous = payload.old && typeof payload.old === 'object' ? payload.old as Record<string, unknown> : {};
+        const id = String(next.id || previous.id || '');
+        if (!id) return;
+        if (payload.eventType === 'DELETE' || next.status !== 'published') {
+          setViewpoints((current) => current.filter((item) => item.id !== id));
+          return;
+        }
+        void addOrUpdateViewpoint(id);
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, []);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -801,13 +859,13 @@ export default function ExploreApp({ initialViewpoints }: { initialViewpoints: V
         <button className="rail-item add-item" type="button" onClick={openSubmit}><Camera /><small>Share</small></button>
       </aside>
 
-      {surface === 'explore' && <ExploreSurface viewpoints={initialViewpoints} category={category} setCategory={setCategory} saved={saved} toggleSaved={toggleSaved} onAdd={openSubmit} />}
-      {surface === 'map' && <MapSurface viewpoints={initialViewpoints} saved={saved} toggleSaved={toggleSaved} />}
-      {surface === 'saved' && <SavedSurface viewpoints={initialViewpoints} saved={saved} toggleSaved={toggleSaved} />}
+      {surface === 'explore' && <ExploreSurface viewpoints={viewpoints} category={category} setCategory={setCategory} saved={saved} toggleSaved={toggleSaved} onAdd={openSubmit} />}
+      {surface === 'map' && <MapSurface viewpoints={viewpoints} saved={saved} toggleSaved={toggleSaved} />}
+      {surface === 'saved' && <SavedSurface viewpoints={viewpoints} saved={saved} toggleSaved={toggleSaved} />}
 
-      {searchOpen && <SearchDialog viewpoints={initialViewpoints} onClose={() => setSearchOpen(false)} />}
+      {searchOpen && <SearchDialog viewpoints={viewpoints} onClose={() => setSearchOpen(false)} />}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
-      {submitOpen && user && <SubmitDialog user={user} onClose={() => setSubmitOpen(false)} onDone={() => { setSubmitOpen(false); showToast('Thanks — we’ll check the pin, then share it'); }} />}
+      {submitOpen && user && <SubmitDialog user={user} onClose={() => setSubmitOpen(false)} onDone={(viewpointId) => { setSubmitOpen(false); showToast('Your view is live'); void fetchPublishedViewpoint(viewpointId).then((viewpoint) => { if (viewpoint) setViewpoints((current) => [viewpoint, ...current.filter((item) => item.id !== viewpoint.id)]); }); }} />}
       {toast && <div className="toast" role="status"><Check size={15} /> {toast}</div>}
     </main>
   );

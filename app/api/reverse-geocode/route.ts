@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 type NominatimAddress = Record<string, string | undefined>;
-type NominatimResult = { address?: NominatimAddress };
+type NominatimResult = { address?: NominatimAddress; display_name?: string };
 
 let lookupQueue = Promise.resolve();
 let nextLookupAt = 0;
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   url.searchParams.set('format', 'jsonv2');
   url.searchParams.set('lat', latitude.toFixed(5));
   url.searchParams.set('lon', longitude.toFixed(5));
-  url.searchParams.set('zoom', '13');
+  url.searchParams.set('zoom', '10');
   url.searchParams.set('layer', 'address');
   url.searchParams.set('addressdetails', '1');
 
@@ -45,8 +45,10 @@ export async function GET(request: NextRequest) {
     if (!response.ok) return NextResponse.json({ error: 'Place lookup unavailable' }, { status: 503 });
     const result = await response.json() as NominatimResult;
     const address = result.address || {};
-    const region = address.city || address.town || address.village || address.municipality
-      || address.county || address.state_district || address.state;
+    const region = address.city || address.town || address.village || address.hamlet
+      || address.municipality || address.suburb || address.city_district || address.county
+      || address.state_district || address.state || address.province
+      || result.display_name?.split(',')[0]?.trim() || address.country;
     if (!region || !address.country) return NextResponse.json({ error: 'Place not found' }, { status: 404 });
     return NextResponse.json(
       { region, country: address.country },

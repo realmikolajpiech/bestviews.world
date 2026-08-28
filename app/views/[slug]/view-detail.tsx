@@ -13,13 +13,14 @@ const ViewpointMap = dynamic(() => import('../../maplibre-map').then((module) =>
 
 type Tip = { id: string; body: string; status: string; author: string };
 
-function capturedAtLabel(localDateTime: string, timezoneOffset: string | null) {
+function capturedAtLabel(localDateTime: string) {
   const [date, time] = localDateTime.split('T');
   const [year, month, day] = date.split('-').map(Number);
   const [hour, minute] = time.split(':').map(Number);
-  const label = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })
-    .format(new Date(Date.UTC(year, month - 1, day, hour, minute)));
-  return timezoneOffset ? `${label} · UTC${timezoneOffset}` : label;
+  const value = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  const dateLabel = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(value);
+  const timeLabel = new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(value);
+  return `${dateLabel} · ${timeLabel}`;
 }
 
 function mapTips(data: Record<string, unknown>[] | null): Tip[] {
@@ -85,9 +86,9 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
   });
   const addTip = () => requireUser(() => {
     if (!user || tipBody.trim().length < 4) return;
-    void getSupabaseBrowserClient().from('tips').insert({ viewpoint_id: view.id, author_id: user.id, body: tipBody.trim(), status: 'pending' }).then(({ error }) => {
+    void getSupabaseBrowserClient().from('tips').insert({ viewpoint_id: view.id, author_id: user.id, body: tipBody.trim(), status: 'approved' }).then(({ error }) => {
       if (error) notify('Could not submit the tip');
-      else { setTipBody(''); notify('Tip submitted for review'); void loadTips(); }
+      else { setTipBody(''); notify('Tip posted'); void loadTips(); }
     });
   });
   const share = async () => {
@@ -110,7 +111,14 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
           <div className="view-identity">
             <p><MapPin size={13} /> {view.region}, {view.country}</p>
             <h1>{view.title}</h1>
-            {view.contributor && <div className="view-contributor"><span>{view.contributor.name.charAt(0).toUpperCase()}</span><small>Shared by {view.contributor.name}</small></div>}
+            {view.contributor && (
+              <Link className="view-contributor" href={`/profile/${view.contributor.id}`} aria-label={`View ${view.contributor.name}'s profile`}>
+                <span className={view.contributor.avatar ? 'has-image' : ''} style={view.contributor.avatar ? { backgroundImage: `url('${view.contributor.avatar}')` } : undefined}>
+                  {!view.contributor.avatar && view.contributor.name.charAt(0).toUpperCase()}
+                </span>
+                <small>Shared by {view.contributor.name}</small>
+              </Link>
+            )}
           </div>
 
           <div className="view-primary-actions">
@@ -124,11 +132,11 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
             <div className="stand-mini-map"><ViewpointMap coordinate={{ latitude: view.latitude, longitude: view.longitude }} ariaLabel={`Exact viewpoint for ${view.title}`} /><small>{view.coordinates}</small></div>
           </section>
 
-          <section className="view-facts">
-            {view.capturedAtLocal && <div><CalendarDays /><span><small>{view.captureTimeSource === 'file' ? 'Photo file date' : 'Photo captured'}</small><strong>{capturedAtLabel(view.capturedAtLocal, view.captureTimezoneOffset)}</strong></span></div>}
-            {view.bestTime && <div><Clock3 /><span><small>Best time</small><strong>{view.bestTime}</strong></span></div>}
-            {view.accessSummary && <div><Footprints /><span><small>From where</small><strong>{view.accessSummary}</strong></span></div>}
-            {view.difficulty && <div><Compass /><span><small>Effort</small><strong>{view.difficulty}</strong></span></div>}
+          <section className="view-facts" aria-label="Useful details about this view">
+            {view.capturedAtLocal && <div><span><small><CalendarDays /> {view.captureTimeSource === 'file' ? 'File dated' : 'Photographed'}</small><strong>{capturedAtLabel(view.capturedAtLocal)}</strong></span></div>}
+            {view.bestTime && <div><span><small><Clock3 /> Best light</small><strong>{view.bestTime}</strong></span></div>}
+            {view.accessSummary && <div><span><small><Footprints /> Getting there</small><strong>{view.accessSummary}</strong></span></div>}
+            {view.difficulty && <div><span><small><Compass /> Effort</small><strong>{view.difficulty}</strong></span></div>}
           </section>
 
           {view.description && <p className="view-plain-description">{view.description}</p>}
@@ -136,7 +144,7 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
 
           <section className="community-tip-section">
             <h2>Tips from people who stood here</h2>
-            {tips.map((tip) => <article key={tip.id}><strong>{tip.author}</strong><p>{tip.body}</p>{tip.status === 'pending' && <small>Pending review</small>}</article>)}
+            {tips.map((tip) => <article key={tip.id}><strong>{tip.author}</strong><p>{tip.body}</p></article>)}
             {!tips.length && <p>No community tips yet.</p>}
             <div><input value={tipBody} onChange={(event) => setTipBody(event.target.value)} maxLength={280} placeholder="Add one useful detail" /><button type="button" onClick={addTip}>Add tip</button></div>
           </section>

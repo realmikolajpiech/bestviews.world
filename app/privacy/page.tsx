@@ -60,7 +60,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2>What is public</h2>
-          <p>BestViews.world is built for sharing. Your display name, profile image, approved viewpoints, viewpoint coordinates, approved photos and tips, follows, and collections you mark public may be visible to anyone. Saves, visited places, private collections, email addresses, and unpublished submissions are not made public unless you choose to share them.</p>
+          <p>BestViews.world is built for sharing. Viewpoints, coordinates, photos, tips, your display name, profile image, bio, location, and social link are public as soon as you add them. Public collections and follows are also visible to others. Saves, visited places, private collections, email addresses, and unfinished drafts are not public.</p>
         </section>
 
         <section>

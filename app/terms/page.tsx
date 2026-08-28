@@ -66,7 +66,7 @@ export default function TermsPage() {
 
         <section>
           <h2>Moderation</h2>
-          <p>Community submissions may be reviewed by moderators before or after publication. We may reject, correct, limit, de-rank, or remove content, and may warn, restrict, suspend, or close accounts when we reasonably believe content is illegal, unsafe, misleading, promotional spam, inaccurate, duplicative, or inconsistent with these Terms.</p>
+          <p>Community submissions are published immediately without pre-approval. We may review, correct, limit, de-rank, or remove content after publication, and may warn, restrict, suspend, or close accounts when we reasonably believe content is illegal, unsafe, misleading, promotional spam, inaccurate, duplicative, or inconsistent with these Terms.</p>
           <p>We consider the nature, context, severity, frequency, and likely impact of a violation. You may ask us to review a moderation decision by emailing <a href="mailto:support@mikolajpiech.com?subject=BestViews.world%20moderation%20review">support@mikolajpiech.com</a> with the viewpoint or account involved and why you believe the decision should change.</p>
         </section>
 

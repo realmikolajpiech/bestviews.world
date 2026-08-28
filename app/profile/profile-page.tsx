@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { ArrowLeft, Check, Heart, LoaderCircle, MapPin, Pencil, Plus, UserRound } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ExternalLink, Heart, LoaderCircle, MapPin, Pencil, Plus, UserRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import AuthDialog from '../auth-dialog';
 import { getSupabaseBrowserClient } from '../supabase';
@@ -12,7 +12,14 @@ import { rowToViewpoint, type Viewpoint, type ViewpointRow } from '../view-data'
 const ProfileMap = dynamic(() => import('../maplibre-map').then((module) => module.ExploreMap), { ssr: false });
 const viewpointSelect = '*, profiles!viewpoints_contributor_id_fkey(id, display_name, avatar_url)';
 
-type ProfileRecord = { display_name: string; avatar_url: string | null };
+type ProfileRecord = {
+  display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  location: string | null;
+  social_url: string | null;
+};
+type ProfileStats = { followers: number; following: number };
 type SharedView = { view: Viewpoint; status: string };
 type ProfileTab = 'visited' | 'saved' | 'shared';
 
@@ -23,6 +30,10 @@ function avatarFrom(user: User, profile: ProfileRecord | null) {
 
 function fallbackName(user: User) {
   return String(user.user_metadata.full_name || user.email?.split('@')[0] || 'Traveler');
+}
+
+function profileLinkLabel(value: string) {
+  try { return new URL(value).hostname.replace(/^www\./, ''); } catch { return 'Social link'; }
 }
 
 function ViewCard({ view, note }: { view: Viewpoint; note?: string }) {
@@ -61,8 +72,16 @@ export default function ProfilePage() {
   const [authOpen, setAuthOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
-  const [savingName, setSavingName] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [socialUrl, setSocialUrl] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [stats, setStats] = useState<ProfileStats>({ followers: 0, following: 0 });
+  const avatarPreview = useMemo(() => avatarFile ? URL.createObjectURL(avatarFile) : null, [avatarFile]);
+
+  useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -76,22 +95,29 @@ export default function ProfilePage() {
         setSavedViews([]);
         setVisitedViews([]);
         setSharedViews([]);
+        setStats({ followers: 0, following: 0 });
         setLoading(false);
         return;
       }
 
       setLoading(true);
-      const [profileResult, savesResult, visitsResult, sharedResult] = await Promise.all([
-        supabase.from('profiles').select('display_name, avatar_url').eq('id', nextUser.id).maybeSingle(),
+      const [profileResult, savesResult, visitsResult, sharedResult, followersResult, followingResult] = await Promise.all([
+        supabase.from('profiles').select('display_name, avatar_url, bio, location, social_url').eq('id', nextUser.id).maybeSingle(),
         supabase.from('saves').select('viewpoint_id, created_at').eq('user_id', nextUser.id).order('created_at', { ascending: false }),
         supabase.from('visits').select('viewpoint_id, visited_at').eq('user_id', nextUser.id).order('visited_at', { ascending: false }),
         supabase.from('viewpoints').select(viewpointSelect).eq('contributor_id', nextUser.id).order('created_at', { ascending: false }),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', nextUser.id),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', nextUser.id),
       ]);
 
       if (!active) return;
       const nextProfile = profileResult.data as ProfileRecord | null;
       setProfile(nextProfile);
       setName(nextProfile?.display_name || fallbackName(nextUser));
+      setBio(nextProfile?.bio || '');
+      setLocation(nextProfile?.location || '');
+      setSocialUrl(nextProfile?.social_url || '');
+      setStats({ followers: followersResult.count || 0, following: followingResult.count || 0 });
 
       const savedIds = (savesResult.data || []).map((row) => String(row.viewpoint_id));
       const visitedIds = (visitsResult.data || []).map((row) => String(row.viewpoint_id));
@@ -125,22 +151,71 @@ export default function ProfilePage() {
   }, []);
 
   const displayName = profile?.display_name || (user ? fallbackName(user) : 'Your views');
-  const firstName = displayName.split(/\s+/)[0];
   const avatar = user ? avatarFrom(user, profile) : null;
   const visibleViews = useMemo(() => tab === 'visited' ? visitedViews : tab === 'saved' ? savedViews : sharedViews.map((item) => item.view), [tab, visitedViews, savedViews, sharedViews]);
 
-  const saveName = async () => {
+  const resetEditor = () => {
+    setName(profile?.display_name || (user ? fallbackName(user) : ''));
+    setBio(profile?.bio || '');
+    setLocation(profile?.location || '');
+    setSocialUrl(profile?.social_url || '');
+    setAvatarFile(null);
+    setProfileError(null);
+  };
+
+  const saveProfile = async () => {
     if (!user) return;
     const trimmed = name.trim();
-    if (!trimmed) return setNameError('Add the name you want people to see.');
-    setSavingName(true);
-    setNameError(null);
+    if (!trimmed) return setProfileError('Add the name you want people to see.');
+    let normalizedSocialUrl: string | null = null;
+    if (socialUrl.trim()) {
+      try {
+        const candidate = /^https?:\/\//i.test(socialUrl.trim()) ? socialUrl.trim() : `https://${socialUrl.trim()}`;
+        const parsed = new URL(candidate);
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Unsupported link');
+        normalizedSocialUrl = parsed.toString();
+      } catch {
+        return setProfileError('Add a valid social or website link.');
+      }
+    }
+
+    setSavingProfile(true);
+    setProfileError(null);
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.from('profiles').update({ display_name: trimmed }).eq('id', user.id);
+    let nextAvatarUrl = profile?.avatar_url || avatarFrom(user, profile);
+    if (avatarFile) {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(avatarFile.type) || avatarFile.size > 4 * 1024 * 1024) {
+        setSavingProfile(false);
+        return setProfileError('Choose a JPG, PNG, or WebP image under 4 MB.');
+      }
+      const extension = avatarFile.type === 'image/png' ? 'png' : avatarFile.type === 'image/webp' ? 'webp' : 'jpg';
+      const avatarPath = `${user.id}/avatar.${extension}`;
+      const { error: uploadError } = await supabase.storage.from('profile-avatars').upload(avatarPath, avatarFile, { contentType: avatarFile.type, upsert: true });
+      if (uploadError) {
+        setSavingProfile(false);
+        return setProfileError('Could not upload that profile picture.');
+      }
+      const { data } = supabase.storage.from('profile-avatars').getPublicUrl(avatarPath);
+      nextAvatarUrl = `${data.publicUrl}?v=${Date.now()}`;
+    }
+
+    const nextProfile: ProfileRecord = {
+      display_name: trimmed,
+      avatar_url: nextAvatarUrl || null,
+      bio: bio.trim() || null,
+      location: location.trim() || null,
+      social_url: normalizedSocialUrl,
+    };
+    const { error } = await supabase.from('profiles').update(nextProfile).eq('id', user.id);
     if (!error) await supabase.auth.updateUser({ data: { full_name: trimmed } });
-    setSavingName(false);
-    if (error) setNameError('Could not save that name.');
-    else { setProfile((current) => ({ display_name: trimmed, avatar_url: current?.avatar_url || null })); setEditing(false); }
+    setSavingProfile(false);
+    if (error) setProfileError('Could not save your profile.');
+    else {
+      setProfile(nextProfile);
+      setSocialUrl(normalizedSocialUrl || '');
+      setAvatarFile(null);
+      setEditing(false);
+    }
   };
 
   const signOut = async () => {
@@ -171,22 +246,54 @@ export default function ProfilePage() {
           <section className="profile-hero">
             <div className={`profile-avatar ${avatar ? 'has-image' : ''}`} style={avatar ? { backgroundImage: `url('${avatar}')` } : undefined}>{!avatar && displayName.charAt(0).toUpperCase()}</div>
             <div className="profile-intro">
-              {editing ? (
-                <div className="profile-name-edit">
-                  <input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} autoFocus aria-label="Display name" />
-                  <button type="button" onClick={() => void saveName()} disabled={savingName}>{savingName ? 'Saving…' : 'Save'}</button>
-                  <button type="button" onClick={() => { setEditing(false); setName(displayName); setNameError(null); }}>Cancel</button>
-                  {nameError && <p role="alert">{nameError}</p>}
-                </div>
-              ) : (
-                <>
-                  <div className="profile-name-line"><h1>{firstName}’s views</h1><button type="button" onClick={() => setEditing(true)} aria-label="Edit your name"><Pencil size={16} /></button></div>
-                  <p>Places that stayed with you.</p>
-                </>
-              )}
+              <div className="profile-name-line"><h1>{displayName}</h1></div>
+              <p className={profile?.bio ? 'profile-bio' : 'profile-bio profile-bio-empty'}>{profile?.bio || 'Share a little about yourself and the views you chase.'}</p>
+              <div className="profile-meta">
+                {profile?.location && <span><MapPin size={14} /> {profile.location}</span>}
+                {profile?.social_url && <a href={profile.social_url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> {profileLinkLabel(profile.social_url)}</a>}
+              </div>
+              <div className="profile-social-stats">
+                <span><strong>{stats.followers}</strong><small>{stats.followers === 1 ? 'Follower' : 'Followers'}</small></span>
+                <span><strong>{stats.following}</strong><small>Following</small></span>
+                <span><strong>{sharedViews.filter((item) => item.status === 'published').length}</strong><small>Shared</small></span>
+              </div>
             </div>
-            <button className="profile-signout" type="button" onClick={() => void signOut()}>Sign out</button>
+            <div className="profile-owner-actions">
+              <button className="profile-edit-profile" type="button" onClick={() => { resetEditor(); setEditing(true); }}><Pencil size={15} /> Edit profile</button>
+              <button className="profile-signout" type="button" onClick={() => void signOut()}>Sign out</button>
+            </div>
           </section>
+
+          {editing && (
+            <section className="profile-editor" aria-label="Edit profile">
+              <div className="profile-editor-head">
+                <div><h2>Complete your profile</h2><p>Help people recognize the person behind the places.</p></div>
+                <button type="button" onClick={() => { resetEditor(); setEditing(false); }} aria-label="Close profile editor"><X size={18} /></button>
+              </div>
+              <form onSubmit={(event) => { event.preventDefault(); void saveProfile(); }}>
+                <label className="profile-avatar-picker">
+                  <span className={`profile-avatar ${avatarPreview || avatar ? 'has-image' : ''}`} style={avatarPreview || avatar ? { backgroundImage: `url('${avatarPreview || avatar}')` } : undefined}>
+                    {!avatarPreview && !avatar && displayName.charAt(0).toUpperCase()}
+                    <i><Camera size={16} /></i>
+                  </span>
+                  <b>Profile picture</b>
+                  <small>JPG, PNG, or WebP · up to 4 MB</small>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setAvatarFile(event.target.files?.[0] || null); setProfileError(null); }} />
+                </label>
+                <div className="profile-editor-fields">
+                  <label><span>Name</span><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} autoFocus /></label>
+                  <label><span>Location</span><input value={location} onChange={(event) => setLocation(event.target.value)} maxLength={100} placeholder="Kraków, Poland" /></label>
+                  <label className="profile-editor-wide"><span>Bio</span><textarea value={bio} onChange={(event) => setBio(event.target.value)} maxLength={240} placeholder="Tell people what kinds of places you chase…" /><small>{bio.length}/240</small></label>
+                  <label className="profile-editor-wide"><span>Social or website link</span><input value={socialUrl} onChange={(event) => setSocialUrl(event.target.value)} maxLength={500} placeholder="instagram.com/yourname" /></label>
+                </div>
+                {profileError && <p className="profile-editor-error" role="alert">{profileError}</p>}
+                <div className="profile-editor-actions">
+                  <button type="button" onClick={() => { resetEditor(); setEditing(false); }}>Cancel</button>
+                  <button type="submit" disabled={savingProfile}>{savingProfile ? 'Saving…' : 'Save profile'}</button>
+                </div>
+              </form>
+            </section>
+          )}
 
           <nav className="profile-tabs" aria-label="Your views">
             <button className={tab === 'visited' ? 'active' : ''} type="button" onClick={() => setTab('visited')}><Check size={16} /> Been there</button>

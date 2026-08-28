@@ -35,6 +35,12 @@ function createExactMarkerElement(picker = false) {
   return shell;
 }
 
+function collapseAttribution(map: MapLibreMap) {
+  map.getContainer()
+    .querySelector('.maplibregl-ctrl-attrib.maplibregl-compact')
+    ?.classList.remove('maplibregl-compact-show');
+}
+
 export function ExploreMap({
   viewpoints,
   selected,
@@ -57,7 +63,7 @@ export function ExploreMap({
     let disposed = false;
     const markers = markerRefs.current;
 
-    void import('maplibre-gl').then(({ LngLatBounds, Map, Marker, NavigationControl, GeolocateControl, setWorkerUrl }) => {
+    void import('maplibre-gl').then(({ AttributionControl, LngLatBounds, Map, Marker, NavigationControl, GeolocateControl, setWorkerUrl }) => {
       if (disposed || !containerRef.current) return;
       setWorkerUrl(MAPLIBRE_WORKER_URL);
 
@@ -67,10 +73,20 @@ export function ExploreMap({
         center: [10, 39],
         zoom: 2.2,
         minZoom: 1.5,
+        attributionControl: false,
       });
       mapRef.current = map;
+      map.addControl(new AttributionControl({ compact: true }), 'bottom-right');
+      collapseAttribution(map);
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
       map.addControl(new GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false }), 'top-right');
+
+      const updatePhotoMarkerScale = () => {
+        const scale = Math.max(0.66, Math.min(1, 0.52 + map.getZoom() * 0.08));
+        containerRef.current?.style.setProperty('--photo-marker-scale', scale.toFixed(3));
+      };
+      updatePhotoMarkerScale();
+      map.on('zoom', updatePhotoMarkerScale);
 
       const bounds = new LngLatBounds();
       viewpoints.forEach((viewpoint) => {
@@ -129,7 +145,7 @@ export function ViewpointMap({
     let disposed = false;
     let map: MapLibreMap | null = null;
 
-    void import('maplibre-gl').then(({ Map, Marker, NavigationControl, setWorkerUrl }) => {
+    void import('maplibre-gl').then(({ AttributionControl, Map, Marker, NavigationControl, setWorkerUrl }) => {
       if (disposed || !containerRef.current) return;
       setWorkerUrl(MAPLIBRE_WORKER_URL);
       map = new Map({
@@ -137,7 +153,10 @@ export function ViewpointMap({
         style: MAP_STYLE,
         center: [coordinate.longitude, coordinate.latitude],
         zoom: 13.5,
+        attributionControl: false,
       });
+      map.addControl(new AttributionControl({ compact: true }), 'bottom-right');
+      collapseAttribution(map);
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
       const element = createExactMarkerElement();
       element.setAttribute('aria-label', 'Exact viewpoint');
@@ -173,7 +192,7 @@ export function LocationPickerMap({
     if (!containerRef.current) return;
     let disposed = false;
 
-    void import('maplibre-gl').then(({ Map, Marker, NavigationControl, setWorkerUrl }) => {
+    void import('maplibre-gl').then(({ AttributionControl, Map, Marker, NavigationControl, setWorkerUrl }) => {
       if (disposed || !containerRef.current) return;
       setWorkerUrl(MAPLIBRE_WORKER_URL);
       const initial = coordinate ?? { latitude: 44.5, longitude: 10.5 };
@@ -182,8 +201,11 @@ export function LocationPickerMap({
         style: MAP_STYLE,
         center: [initial.longitude, initial.latitude],
         zoom: coordinate ? 13 : 3.3,
+        attributionControl: false,
       });
       mapRef.current = map;
+      map.addControl(new AttributionControl({ compact: true }), 'bottom-right');
+      collapseAttribution(map);
       map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
 
       const element = createExactMarkerElement(true);
