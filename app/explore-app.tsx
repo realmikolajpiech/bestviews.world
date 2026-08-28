@@ -31,7 +31,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import AuthDialog from './auth-dialog';
 import { getSupabaseBrowserClient } from './supabase';
 import type { Coordinates } from './maplibre-map';
-import { preparePhotoForUpload, readPhotoLocation } from './photo-location';
+import { preparePhotoForUpload, readPhotoCaptureTime, readPhotoLocation } from './photo-location';
 import { categories, type ViewCategory, type Viewpoint } from './view-data';
 
 const ExploreMap = dynamic(() => import('./maplibre-map').then((module) => module.ExploreMap), { ssr: false });
@@ -259,6 +259,14 @@ function SearchDialog({ viewpoints, onClose }: { viewpoints: Viewpoint[]; onClos
 }
 
 function formatCoordinates({ latitude, longitude }: Coordinates) { return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`; }
+function formatCaptureTime(localDateTime: string, timezoneOffset: string | null) {
+  const [date, time] = localDateTime.split('T');
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  const label = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+    .format(new Date(year, month - 1, day, hour, minute));
+  return timezoneOffset ? `${label} (UTC${timezoneOffset})` : `${label} (camera time)`;
+}
 function photoContentType(file: File) {
   if (file.type === 'image/jpeg' || file.type === 'image/jpg') return 'image/jpeg';
   if (file.type === 'image/png' || file.type === 'image/webp') return file.type;
@@ -293,6 +301,8 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
   const [coordinateText, setCoordinateText] = useState('');
   const [coordinateSource, setCoordinateSource] = useState<'photo' | 'manual' | null>(null);
   const [detectedPhotoCoordinate, setDetectedPhotoCoordinate] = useState<Coordinates | null>(null);
+  const [capturedAtLocal, setCapturedAtLocal] = useState<string | null>(null);
+  const [captureTimezoneOffset, setCaptureTimezoneOffset] = useState<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoLocationState, setPhotoLocationState] = useState<PhotoLocationState>('idle');
   const [submitting, setSubmitting] = useState(false);
@@ -321,11 +331,20 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     }
     setPhoto(file);
     setDetectedPhotoCoordinate(null);
+    setCapturedAtLocal(null);
+    setCaptureTimezoneOffset(null);
     setError(null);
     setPhotoLocationState('scanning');
 
-    const result = await readPhotoLocation(file);
+    const [result, captureTime] = await Promise.all([
+      readPhotoLocation(file),
+      readPhotoCaptureTime(file),
+    ]);
     if (readId !== photoReadId.current) return;
+    if (captureTime.kind === 'found') {
+      setCapturedAtLocal(captureTime.localDateTime);
+      setCaptureTimezoneOffset(captureTime.timezoneOffset);
+    }
     if (result.kind === 'found') {
       setDetectedPhotoCoordinate(result.coordinates);
       updateCoordinate(result.coordinates, 'photo');
@@ -374,7 +393,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
       slug: makeSlug(title), contributor_id: user.id, title: title.trim(), short_title: title.trim(),
       region: region.trim(), country: country.trim(), latitude: parsed.latitude, longitude: parsed.longitude,
       look_direction: 'View from the marked spot', category, best_time: bestTime.trim() || null, access_summary: access.trim() || null,
-      cover_photo_path: storagePath, status: 'pending',
+      cover_photo_path: storagePath, captured_at_local: capturedAtLocal, capture_timezone_offset: captureTimezoneOffset, status: 'pending',
     });
     setSubmitting(false);
     if (insertError) { await supabase.storage.from('viewpoint-photos').remove([storagePath]); return setError(insertError.message); }
@@ -397,7 +416,7 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
           <input className="visually-hidden" id="viewpoint-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handlePhoto(event.target.files?.[0]); event.currentTarget.value = ''; }} />
           <div className={`photo-location-status ${photoLocationState}`} role="status" aria-live="polite">
             {photoLocationState === 'found' ? <Check size={16} /> : <ShieldCheck size={16} />}
-            <span><strong>{photoLocationState === 'found' ? 'Photo location detected' : 'GPS is read on this device'}</strong><small>{photoLocationMessage}</small></span>
+            <span><strong>{photoLocationState === 'found' ? 'Photo location detected' : 'GPS is read on this device'}</strong><small>{photoLocationMessage}{capturedAtLocal && <> Taken {formatCaptureTime(capturedAtLocal, captureTimezoneOffset)}.</>}</small></span>
           </div>
         </div>}
 

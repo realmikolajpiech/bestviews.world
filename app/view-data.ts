@@ -26,6 +26,8 @@ export type Viewpoint = {
   image: string;
   thumb: string;
   contributor: Contributor | null;
+  capturedAtLocal: string | null;
+  captureTimezoneOffset: string | null;
   createdAt: string;
 };
 
@@ -74,6 +76,8 @@ export function rowToViewpoint(row: ViewpointRow): Viewpoint {
       name: contributor.display_name || 'Community member',
       avatar: contributor.avatar_url || null,
     } : null,
+    capturedAtLocal: row.captured_at_local ? String(row.captured_at_local) : null,
+    captureTimezoneOffset: row.capture_timezone_offset ? String(row.capture_timezone_offset) : null,
     createdAt: row.created_at,
   };
 }

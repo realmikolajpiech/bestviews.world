@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
-import { ArrowLeft, Bookmark, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun } from 'lucide-react';
+import { ArrowLeft, Bookmark, CalendarDays, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AuthDialog from '../../auth-dialog';
 import { getSupabaseBrowserClient } from '../../supabase';
@@ -12,6 +12,14 @@ import type { Viewpoint } from '../../view-data';
 const ViewpointMap = dynamic(() => import('../../maplibre-map').then((module) => module.ViewpointMap), { ssr: false });
 
 type Tip = { id: string; body: string; status: string; author: string };
+
+function capturedAtLabel(localDateTime: string) {
+  const [date, time] = localDateTime.split('T');
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+    .format(new Date(year, month - 1, day, hour, minute));
+}
 
 function mapTips(data: Record<string, unknown>[] | null): Tip[] {
   return (data || []).map((row) => {
@@ -116,6 +124,7 @@ export default function ViewDetail({ view }: { view: Viewpoint }) {
           </section>
 
           <section className="view-facts">
+            {view.capturedAtLocal && <div><CalendarDays /><span><small>Photo captured</small><strong>{capturedAtLabel(view.capturedAtLocal)}</strong></span></div>}
             {view.bestTime && <div><Clock3 /><span><small>Best time</small><strong>{view.bestTime}</strong></span></div>}
             {view.accessSummary && <div><Footprints /><span><small>From where</small><strong>{view.accessSummary}</strong></span></div>}
             {view.difficulty && <div><Compass /><span><small>Effort</small><strong>{view.difficulty}</strong></span></div>}

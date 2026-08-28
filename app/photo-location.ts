@@ -5,6 +5,11 @@ export type PhotoLocationResult =
   | { kind: 'missing' }
   | { kind: 'unreadable' };
 
+export type PhotoCaptureTimeResult =
+  | { kind: 'found'; localDateTime: string; timezoneOffset: string | null }
+  | { kind: 'missing' }
+  | { kind: 'unreadable' };
+
 export type PreparedPhoto = {
   blob: Blob;
   contentType: 'image/webp';
@@ -32,6 +37,46 @@ export async function readPhotoLocation(file: File): Promise<PhotoLocationResult
     return isValidCoordinate(coordinates)
       ? { kind: 'found', coordinates }
       : { kind: 'missing' };
+  } catch {
+    return { kind: 'unreadable' };
+  }
+}
+
+function parseExifDateTime(value: unknown, offsetValue: unknown): PhotoCaptureTimeResult {
+  if (typeof value !== 'string') return { kind: 'missing' };
+  const match = value.trim().match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (!match) return { kind: 'missing' };
+  const [, year, month, day, hour, minute, second] = match;
+  const parts = [year, month, day, hour, minute, second].map(Number);
+  const check = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]));
+  if (check.getUTCFullYear() !== parts[0]
+    || check.getUTCMonth() !== parts[1] - 1
+    || check.getUTCDate() !== parts[2]
+    || check.getUTCHours() !== parts[3]
+    || check.getUTCMinutes() !== parts[4]
+    || check.getUTCSeconds() !== parts[5]) return { kind: 'missing' };
+
+  const timezoneOffset = typeof offsetValue === 'string' && /^[+-](?:0\d|1[0-4]):[0-5]\d$/.test(offsetValue.trim())
+    ? offsetValue.trim()
+    : null;
+  return { kind: 'found', localDateTime: `${year}-${month}-${day}T${hour}:${minute}:${second}`, timezoneOffset };
+}
+
+/** Reads the camera's original local capture time without guessing a timezone. */
+export async function readPhotoCaptureTime(file: File): Promise<PhotoCaptureTimeResult> {
+  try {
+    const { parse } = await import('exifr');
+    const metadata = await parse(file, {
+      exif: {
+        pick: ['DateTimeOriginal', 'OffsetTimeOriginal', 'CreateDate'],
+        reviveValues: false,
+      },
+    }) as Record<string, unknown> | undefined;
+    if (!metadata) return { kind: 'missing' };
+    return parseExifDateTime(
+      metadata.DateTimeOriginal ?? metadata.CreateDate,
+      metadata.OffsetTimeOriginal,
+    );
   } catch {
     return { kind: 'unreadable' };
   }
