@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         <section>
           <h2>Information we collect</h2>
           <h3>Account information</h3>
-          <p>When you continue with Google or Facebook, we receive information made available by that provider, such as your name, email address, profile image, and provider account identifier. We do not receive your social account password.</p>
+          <p>When you continue with Google, we receive information made available by Google, such as your name, email address, profile image, and provider account identifier. We do not receive your Google password.</p>
           <h3>Things you choose to add</h3>
           <p>This includes viewpoints and their exact coordinates, photos, captions, practical tips, saved and visited places, collections, follows, and other community activity.</p>
           <h3>Location</h3>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2>How information is shared</h2>
-          <p>We use service providers to run BestViews.world, including Supabase for authentication, database, and file storage, and Google or Meta when you use their sign-in option. They process information under their own terms and privacy commitments. We may also disclose information when required by law, to protect people or the service, or as part of a business transfer with appropriate safeguards. We do not sell personal information.</p>
+          <p>We use service providers to run BestViews.world, including Supabase for authentication, database, and file storage, and Google when you use its sign-in option. They process information under their own terms and privacy commitments. We may also disclose information when required by law, to protect people or the service, or as part of a business transfer with appropriate safeguards. We do not sell personal information.</p>
         </section>
 
         <section>
@@ -81,7 +81,7 @@ export default function PrivacyPage() {
         <section id="deletion">
           <h2>Access, correction, and deletion</h2>
           <p>You may ask to access, correct, export, or delete your personal information, or object to or restrict certain processing where applicable. To delete your BestViews.world account and associated personal information, email <a href="mailto:support@mikolajpiech.com?subject=BestViews.world%20account%20deletion">support@mikolajpiech.com</a> from the address connected to your account with the subject “Account deletion.” We may need to verify that you own the account before completing the request.</p>
-          <p>You can also disconnect BestViews.world from Google or Facebook through the connected-app settings in your provider account. Disconnecting a provider does not by itself delete your BestViews.world account; use the request above for full deletion. We will respond within the period required by applicable law.</p>
+          <p>You can also disconnect BestViews.world through the connected-app settings in your Google account. Disconnecting Google does not by itself delete your BestViews.world account; use the request above for full deletion. We will respond within the period required by applicable law.</p>
         </section>
 
         <section>

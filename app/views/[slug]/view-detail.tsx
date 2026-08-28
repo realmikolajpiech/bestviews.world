@@ -4,7 +4,6 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
 import { ArrowLeft, Bookmark, Check, Clock3, Compass, Footprints, MapPin, Navigation, Share2, Sun, X } from 'lucide-react';
-import { FaFacebook } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import { useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '../../supabase';
@@ -35,9 +34,9 @@ function DetailAuth({ onClose }: { onClose: () => void }) {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   });
-  const continueWith = async (provider: 'google' | 'facebook') => {
+  const continueWithGoogle = async () => {
     setError(null);
-    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({ provider, options: { redirectTo: window.location.href } });
+    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
     if (authError) setError(authError.message);
   };
   return (
@@ -48,11 +47,8 @@ function DetailAuth({ onClose }: { onClose: () => void }) {
         <h2>Keep this view with you.</h2>
         <p>Sign in to save it, mark it visited, or leave a practical tip.</p>
         <div className="oauth-actions">
-          <button type="button" onClick={() => void continueWith('google')}>
+          <button type="button" onClick={() => void continueWithGoogle()}>
             <span className="oauth-button-content"><FcGoogle size={21} aria-hidden="true" /><span>Continue with Google</span></span>
-          </button>
-          <button type="button" onClick={() => void continueWith('facebook')}>
-            <span className="oauth-button-content"><FaFacebook size={22} color="#1877f2" aria-hidden="true" /><span>Continue with Facebook</span></span>
           </button>
         </div>
         {error && <p className="submit-error">{error}</p>}
