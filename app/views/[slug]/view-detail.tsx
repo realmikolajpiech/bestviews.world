@@ -21,22 +21,35 @@ function mapTips(data: Record<string, unknown>[] | null): Tip[] {
 }
 
 function DetailAuth({ onClose }: { onClose: () => void }) {
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const submit = async () => {
-    if (!email.includes('@')) return setError('Enter a valid email address.');
-    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
-    if (authError) setError(authError.message); else setSent(true);
+  const requestClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 190);
+  };
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') requestClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  });
+  const continueWith = async (provider: 'google' | 'facebook') => {
+    setError(null);
+    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({ provider, options: { redirectTo: window.location.href } });
+    if (authError) setError(authError.message);
   };
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
       <section className="auth-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="dialog-close" type="button" onClick={onClose}><X size={18} /></button>
+        <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
         <img src="/bestviews-logo.png" alt="" />
-        <h2>{sent ? 'Check your inbox' : 'Keep this view with you.'}</h2>
-        <p>{sent ? `A private sign-in link is on its way to ${email}.` : 'Sign in to save it, mark it visited, or leave a practical tip.'}</p>
-        {!sent && <><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" /></label>{error && <p className="submit-error">{error}</p>}<button className="primary-submit" type="button" onClick={() => void submit()}>Email me a sign-in link</button></>}
+        <h2>Keep this view with you.</h2>
+        <p>Sign in to save it, mark it visited, or leave a practical tip.</p>
+        <div className="oauth-actions">
+          <button type="button" onClick={() => void continueWith('google')}><span className="google-mark">G</span>Continue with Google</button>
+          <button type="button" onClick={() => void continueWith('facebook')}><span className="facebook-mark">f</span>Continue with Facebook</button>
+        </div>
+        {error && <p className="submit-error">{error}</p>}
       </section>
     </div>
   );

@@ -190,8 +190,17 @@ a { text-decoration: none; }
 .empty-saved h2 { font-size: 25px; font-weight: 650; letter-spacing: -.8px; margin: 18px 0 6px; }
 .empty-saved p { margin: 0; color: #7d847e; font-size: 10px; }
 
-.modal-backdrop { position: fixed; z-index: 100; inset: 0; padding: 100px 20px 20px; display: flex; justify-content: center; align-items: flex-start; background: rgba(16,23,18,.48); backdrop-filter: blur(10px); animation: fade-in .2s ease both; }
-@keyframes fade-in { from { opacity: 0; } }
+.modal-backdrop { position: fixed; z-index: 100; inset: 0; padding: 20px; display: flex; justify-content: center; align-items: center; background: rgba(16,23,18,.48); backdrop-filter: blur(10px); animation: modal-backdrop-in .25s ease both; }
+.modal-backdrop > section { transform-origin: center; animation: modal-card-in .34s cubic-bezier(.18,.86,.24,1) both; }
+.modal-backdrop.is-closing { pointer-events: none; animation: modal-backdrop-out .19s ease both; }
+.modal-backdrop.is-closing > section { animation: modal-card-out .19s cubic-bezier(.4,0,1,1) both; }
+@keyframes modal-backdrop-in { from { opacity: 0; backdrop-filter: blur(0); } }
+@keyframes modal-backdrop-out { to { opacity: 0; backdrop-filter: blur(0); } }
+@keyframes modal-card-in { from { opacity: 0; transform: translateY(18px) scale(.965); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes modal-card-out { to { opacity: 0; transform: translateY(10px) scale(.975); } }
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop, .modal-backdrop > section, .modal-backdrop.is-closing, .modal-backdrop.is-closing > section { animation-duration: .01ms; }
+}
 .search-dialog { width: min(670px,100%); background: #f9faf6; border: 1px solid rgba(255,255,255,.8); border-radius: 22px; box-shadow: 0 25px 80px rgba(10,18,12,.28); overflow: hidden; }
 .dialog-search { height: 68px; background: white; display: flex; align-items: center; gap: 12px; padding: 0 17px; border-bottom: 1px solid #e8eae5; }
 .dialog-search input { flex: 1; border: 0; outline: 0; font-size: 15px; background: transparent; }
@@ -435,7 +444,7 @@ a { text-decoration: none; }
   .passport { width: 100%; }
   .saved-grid { grid-template-columns: 1fr; }
   .saved-card { min-height: 210px; }
-  .modal-backdrop { padding: 77px 12px 80px; overflow-y: auto; }
+  .modal-backdrop { padding: 12px; overflow-y: auto; }
   .submit-dialog { padding: 24px 20px; }
   .toast { bottom: 92px; white-space: nowrap; }
   .mobile-add { display: grid; place-items: center; position: fixed; z-index: 70; right: 28px; bottom: 27px; width: 48px; height: 48px; border-radius: 15px; border: 0; background: var(--lime); color: var(--ink); box-shadow: 0 8px 25px rgba(0,0,0,.24); }
@@ -779,8 +788,12 @@ a { text-decoration: none; }
 .auth-dialog > img { width: 48px; height: 48px; border-radius: 50%; }
 .auth-dialog h2, .profile-dialog h2 { margin: 19px 0 7px; font-size: 29px; line-height: 1; font-weight: 670; letter-spacing: -1.2px; }
 .auth-dialog > p, .profile-dialog > p { margin: 0; color: #747c75; font-size: 12px; line-height: 1.55; }
-.auth-dialog label { margin-top: 24px; display: grid; gap: 7px; color: #4c544e; font-size: 10px; font-weight: 700; }
-.auth-dialog input { height: 44px; padding: 0 12px; border: 1px solid #dce1d9; border-radius: 10px; background: white; outline: 0; }
+.oauth-actions { margin-top: 25px; display: grid; gap: 9px; }
+.oauth-actions button { position: relative; height: 47px; border: 1px solid #dce1d9; border-radius: 11px; background: white; color: #29312b; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.oauth-actions button:hover { background: #f3f5f0; border-color: #cfd5cc; }
+.oauth-actions button > span { position: absolute; left: 14px; width: 23px; height: 23px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; }
+.google-mark { border: 1px solid #e0e3dd; color: #2d69c7; background: white; }
+.facebook-mark { color: white; background: #1877f2; font-family: Arial,sans-serif; font-size: 17px !important; }
 .profile-dialog { text-align: center; }
 .profile-large-avatar { width: 64px; height: 64px; margin: 0 auto; border-radius: 50%; background: var(--ink); color: white; display: grid; place-items: center; font-size: 24px; font-weight: 700; }
 .profile-stats { margin: 24px 0 18px; padding: 15px; border: 1px solid #e1e4de; border-radius: 14px; display: grid; grid-template-columns: 1fr 1fr; }

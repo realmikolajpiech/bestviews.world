@@ -39,6 +39,22 @@ const LocationPickerMap = dynamic(() => import('./maplibre-map').then((module) =
 type Surface = 'explore' | 'map' | 'saved';
 type SubmissionSummary = { title: string; status: string };
 
+function useAnimatedModalClose(onClose: () => void) {
+  const [closing, setClosing] = useState(false);
+  const closeThen = (afterClose: () => void) => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(afterClose, 190);
+  };
+  const requestClose = () => closeThen(onClose);
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => { if (event.key === 'Escape') requestClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  });
+  return { closing, requestClose, closeThen };
+}
+
 const categoryIcons = {
   'For you': Sparkles,
   Sunsets: Sunset,
@@ -217,11 +233,12 @@ function SavedSurface({ viewpoints, saved, toggleSaved }: { viewpoints: Viewpoin
 
 function SearchDialog({ viewpoints, onClose }: { viewpoints: Viewpoint[]; onClose: () => void }) {
   const [query, setQuery] = useState('');
+  const { closing, requestClose } = useAnimatedModalClose(onClose);
   const results = useMemo(() => viewpoints.filter((view) => `${view.title} ${view.region} ${view.country}`.toLowerCase().includes(query.toLowerCase())), [query, viewpoints]);
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
       <section className="search-dialog" role="dialog" aria-modal="true" aria-label="Search destinations" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="dialog-search"><Search size={20} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search a city, region or view" /><button type="button" onClick={onClose}><X size={18} /></button></div>
+        <div className="dialog-search"><Search size={20} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search a city, region or view" /><button type="button" onClick={requestClose}><X size={18} /></button></div>
         <div className="search-body">
           <div className="search-results">
             {results.slice(0, 8).map((view) => (
@@ -236,36 +253,37 @@ function SearchDialog({ viewpoints, onClose }: { viewpoints: Viewpoint[]; onClos
 }
 
 function AuthDialog({ onClose }: { onClose: () => void }) {
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const sendLink = async () => {
-    if (!email.includes('@')) return setError('Enter a valid email address.');
-    setBusy(true); setError(null);
-    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
-    setBusy(false);
-    if (authError) setError(authError.message); else setSent(true);
+  const { closing, requestClose } = useAnimatedModalClose(onClose);
+  const continueWith = async (provider: 'google' | 'facebook') => {
+    setError(null);
+    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({ provider, options: { redirectTo: window.location.href } });
+    if (authError) setError(authError.message);
   };
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
       <section className="auth-dialog" role="dialog" aria-modal="true" aria-label="Sign in" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="dialog-close" type="button" onClick={onClose}><X size={18} /></button>
+        <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
         <img src="/bestviews-logo.png" alt="" />
-        <h2>{sent ? 'Check your inbox' : 'Keep your views with you.'}</h2>
-        <p>{sent ? `We sent a private sign-in link to ${email}.` : 'Sign in to save places, mark where you have been, and share your own viewpoints.'}</p>
-        {!sent && <><label>Email<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" /></label>{error && <p className="submit-error">{error}</p>}<button className="primary-submit" type="button" onClick={() => void sendLink()} disabled={busy}>{busy ? 'Sending…' : 'Email me a sign-in link'} <ChevronRight size={15} /></button></>}
+        <h2>Keep your views with you.</h2>
+        <p>Save places, remember where you have been, and share your own viewpoints.</p>
+        <div className="oauth-actions">
+          <button type="button" onClick={() => void continueWith('google')}><span className="google-mark">G</span>Continue with Google</button>
+          <button type="button" onClick={() => void continueWith('facebook')}><span className="facebook-mark">f</span>Continue with Facebook</button>
+        </div>
+        {error && <p className="submit-error">{error}</p>}
       </section>
     </div>
   );
 }
 
 function ProfileDialog({ user, savedCount, visitedCount, submissions, onClose }: { user: User; savedCount: number; visitedCount: number; submissions: SubmissionSummary[]; onClose: () => void }) {
-  const signOut = async () => { await getSupabaseBrowserClient().auth.signOut(); onClose(); };
+  const { closing, requestClose, closeThen } = useAnimatedModalClose(onClose);
+  const signOut = async () => { await getSupabaseBrowserClient().auth.signOut(); closeThen(onClose); };
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
       <section className="profile-dialog" role="dialog" aria-modal="true" aria-label="Your profile" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="dialog-close" type="button" onClick={onClose}><X size={18} /></button>
+        <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
         <span className="profile-large-avatar">{(user.user_metadata.full_name || user.email || 'T').charAt(0).toUpperCase()}</span>
         <h2>{user.user_metadata.full_name || user.email?.split('@')[0] || 'Traveler'}</h2>
         <p>{user.email}</p>
@@ -291,6 +309,7 @@ function makeSlug(title: string) {
 }
 
 function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => void; onDone: (title: string) => void }) {
+  const { closing, requestClose, closeThen } = useAnimatedModalClose(onClose);
   const [title, setTitle] = useState('');
   const [region, setRegion] = useState('');
   const [country, setCountry] = useState('');
@@ -337,13 +356,13 @@ function SubmitDialog({ user, onClose, onDone }: { user: User; onClose: () => vo
     });
     setSubmitting(false);
     if (insertError) { await supabase.storage.from('viewpoint-photos').remove([storagePath]); return setError(insertError.message); }
-    onDone(title.trim());
+    closeThen(() => onDone(title.trim()));
   };
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+    <div className={`modal-backdrop ${closing ? 'is-closing' : ''}`} role="presentation" onMouseDown={requestClose}>
       <section className="submit-dialog" role="dialog" aria-modal="true" aria-label="Share a viewpoint" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="dialog-close" type="button" onClick={onClose}><X size={18} /></button>
+        <button className="dialog-close" type="button" onClick={requestClose}><X size={18} /></button>
         <h2>Share a view</h2><p>Show someone exactly where to stand and where to look.</p>
         <div className="submission-grid">
           <label>Viewpoint name<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="The name people will remember" /></label>
