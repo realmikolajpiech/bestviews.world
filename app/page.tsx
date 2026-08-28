@@ -1,9 +1,9 @@
-import { getChatGPTUser } from './chatgpt-auth';
 import ExploreApp from './explore-app';
+import { getPublishedViewpoints } from './supabase-data';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const user = await getChatGPTUser();
-  return <ExploreApp userName={user?.displayName ?? null} />;
+  const viewpoints = await getPublishedViewpoints();
+  return <ExploreApp initialViewpoints={viewpoints} />;
 }
